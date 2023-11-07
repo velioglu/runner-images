@@ -90,8 +90,9 @@ Describe "Docker" {
         $clientVersion | Should -Be $serverVersion
     }
 
+    $arch = If (Test-IsArm64) { "arm64" } else { "x64" }
     It "docker buildx" {
-        $version=(Get-ToolsetContent).docker.plugins | Where-Object { $_.plugin -eq 'buildx' } | Select-Object -ExpandProperty version
+        $version=(Get-ToolsetContent).docker.plugins.$arch | Where-Object { $_.plugin -eq 'buildx' } | Select-Object -ExpandProperty version
         If ($version -ne "latest") {
             $(docker buildx version) | Should -BeLike "*$version*"
         }else{
@@ -100,7 +101,7 @@ Describe "Docker" {
     }
 
     It "docker compose v2" {
-        $version=(Get-ToolsetContent).docker.plugins | Where-Object { $_.plugin -eq 'compose' } | Select-Object -ExpandProperty version
+        $version=(Get-ToolsetContent).docker.plugins.$arch | Where-Object { $_.plugin -eq 'compose' } | Select-Object -ExpandProperty version
         If ($version -ne "latest") {
             $(docker compose version --short) | Should -BeLike "*$version*"
         }else{
