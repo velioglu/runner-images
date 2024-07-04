@@ -1,203 +1,41 @@
 name: Build Ubicloud Image
-# GitHub Action port from Azure Pipelines version
-# https://github.com/actions/runner-images/blob/main/images.CI/linux-and-win/azure-pipelines/image-generation.yml
 
 on:
   workflow_dispatch:
     inputs:
       image_type:
-        description: "Image type"
+        description: Image Type
         required: true
-        default: ubuntu-22.04
+        default: ubuntu-noble
         type: choice
         options:
-          - ubuntu-20.04
-          - ubuntu-20.04.arm64
-          - ubuntu-22.04
-          - ubuntu-22.04.arm64
-          - ubuntu-22.04.gpu
-          - ubuntu-minimal
-      image_suffix:
-        description: "Suffix for image name, if not provided the image version"
+          - ubuntu-noble
+          - ubuntu-jammy
+          - almalinux-9
+          - almalinux-8
+
+      image_arch:
+        description: Image Arch
+        required: true
+        default: x64
+        type: choice
+        options:
+          - x64
+          - arm64
+
+      image_version:
+        description: Image Version
+        required: true
         type: string
-      upload_image:
-        description: "Upload image to MinIO cluster"
-        default: true
-        type: boolean
 
-permissions:
-  id-token: write
-  contents: read
-
-env:
-  AZURE_LOCATION: "Germany West Central"
-  RUN_VALIDATION_FLAG: "true"
 jobs:
-  build:
-    name: Build ${{ inputs.image_type }}
-    runs-on: ubicloud-standard-4
-    outputs:
-      image_name: ${{ steps.setvars.outputs.ManagedImageName }}
-      image_suffix: ${{ steps.setvars.outputs.ImageSuffix }}
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Setup packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: 1.9.4
-
-      - name: Set variables
-        shell: pwsh
-        id: setvars
-        run: |
-          $ImageType = "${{ inputs.image_type }}"
-          $TemplateDirectoryName = if ($ImageType.StartsWith("ubuntu")) { "ubuntu/templates" } else { "windows/templates" }
-          $TemplateDirectoryPath = Join-Path "images" $TemplateDirectoryName | Resolve-Path
-          $TemplatePath = Join-Path $TemplateDirectoryPath "$ImageType.pkr.hcl"
-          "TemplateDirectoryPath=$TemplateDirectoryPath" >> $env:GITHUB_ENV
-          "TemplatePath=$TemplatePath" >> $env:GITHUB_ENV
-
-          $ReadmeName = switch ( $ImageType )
-          {
-              "ubuntu-20.04" { 'Ubuntu2004-Readme.md' }
-              "ubuntu-20.04.arm64" { 'Ubuntu2004-Readme.md' }
-              "ubuntu-22.04" { 'Ubuntu2204-Readme.md' }
-              "ubuntu-22.04.arm64" { 'Ubuntu2204-Readme.md' }
-              "ubuntu-22.04.gpu" { 'Ubuntu2204-Readme.md' }
-              "ubuntu-minimal" { 'Ubuntu2204-Readme.md' }
-          }
-          "Readme_Name=$ReadmeName" >> $env:GITHUB_ENV
-          $readmePath = Join-Path "$TemplateDirectoryPath/.." "$ReadmeName" | Resolve-Path
-          $ImageVersion = (Select-String -Path $readmePath -Pattern 'Image Version: ([0-9.]+)').Matches.Groups[1].Value
-          $ImageSuffix = if ("${{ inputs.image_suffix }}") { "${{ inputs.image_suffix }}" } else { $ImageVersion }
-          "ImageSuffix=$ImageSuffix" >> $env:GITHUB_ENV
-          "ImageSuffix=$ImageSuffix" >> $env:GITHUB_OUTPUT
-
-          $ManagedImageName = "${{ inputs.image_type }}-$ImageSuffix"
-          "ManagedImageName=$ManagedImageName" >> $env:GITHUB_ENV
-          "ManagedImageName=$ManagedImageName" >> $env:GITHUB_OUTPUT
-
-          $VhdName = "$ManagedImageName.vhd"
-          "VhdName=$VhdName" >> $env:GITHUB_ENV
-
-          $TempResourceGroupName = "packer-temp-$ManagedImageName"
-          "TempResourceGroupName=$TempResourceGroupName" >> $env:GITHUB_ENV
-
-      - name: Build VM
-        shell: pwsh
-        run: |
-          ./images.CI/linux-and-win/build-image.ps1 `
-            -ClientId "${{ secrets.AZURE_CLIENT_ID }}" `
-            -ClientSecret "${{ secrets.AZURE_CLIENT_SECRET }}" `
-            -TemplatePath "$env:TemplatePath" `
-            -ImageName "$env:ManagedImageName" `
-            -ImageResourceGroupName "${{ secrets.AZURE_RESOURCE_GROUP }}" `
-            -TempResourceGroupName "$env:TempResourceGroupName" `
-            -SubscriptionId "${{ secrets.AZURE_SUBSCRIPTION_ID }}" `
-            -TenantId "${{ secrets.AZURE_TENANT_ID }}" `
-            -Location "$env:AZURE_LOCATION" `
-            -ImageVersion "$env:ImageSuffix"
-        env:
-          PACKER_LOG: 1
-          PACKER_LOG_PATH: "/tmp/packer-log.txt"
-
-      - name: Convert managed image to VHD
-        shell: pwsh
-        timeout-minutes: 120
-        run: |
-          ./images.CI/linux-and-win/convert-to-vhd.ps1 `
-            -SubscriptionId "${{ secrets.AZURE_SUBSCRIPTION_ID }}" `
-            -Location "$env:AZURE_LOCATION" `
-            -ResourceGroupName "${{ secrets.AZURE_RESOURCE_GROUP }}" `
-            -ManagedImageName "$env:ManagedImageName" `
-            -GalleryName "GitHubRunnerImages" `
-            -GalleryImageSku "${{ inputs.image_type }}" `
-            -GalleryImageVersion "$env:ImageSuffix" `
-            -StorageAccountName "${{ secrets.AZURE_STORAGE_ACCOUNT }}" `
-            -StorageAccountContainerName "images" `
-            -VhdName "$env:VhdName" `
-            -ClientId "${{ secrets.AZURE_CLIENT_ID }}" `
-            -ClientSecret "${{ secrets.AZURE_CLIENT_SECRET }}" `
-            -TenantId "${{ secrets.AZURE_TENANT_ID }}" `
-            -RemoveManagedImage
-
-      - name: Copy image artifacts to the separate directory
-        shell: pwsh
-        run: |
-          $ImageType = "${{ inputs.image_type }}"
-          $rootDirectoryName = if ($ImageType.StartsWith("ubuntu")) { "ubuntu" } else { "windows" }
-          $rootDirectoryPath = Join-Path "images" $rootDirectoryName | Resolve-Path
-
-          $readmePath = Join-Path $rootDirectoryPath "$env:Readme_Name"
-          $softwareReportPath = Join-Path $rootDirectoryPath "software-report.json"
-
-          New-Item artifact -ItemType Directory
-          Copy-Item -Path $readmePath -Destination "artifact/"
-          if (Test-Path $softwareReportPath) {
-              Copy-Item -Path $softwareReportPath -Destination "artifact/"
-          }
-
-      - name: Print markdown software report
-        shell: pwsh
-        run: |
-          Get-Content -Path "artifact/$env:Readme_Name"
-
-      - name: Print json software report
-        shell: pwsh
-        run: |
-          $softwareReportPath = "artifact/software-report.json"
-          if (Test-Path $softwareReportPath) {
-              Get-Content -Path $softwareReportPath
-          }
-
-      - name: Publish Artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ env.ManagedImageName }}-artifact
-          path: artifact/*
-
-      - name: Print provisioners duration
-        shell: pwsh
-        run: |
-          ./images.CI/measure-provisioners-duration.ps1 `
-            -PackerLogPath "/tmp/packer-log.txt" `
-            -PrefixToPathTrim "$env:TemplateDirectoryPath" `
-            -PrintTopNLongest 25
-
-      - name: Clean up resources
-        if: always()
-        shell: pwsh
-        run: |
-          ./images.CI/linux-and-win/cleanup.ps1 `
-            -TempResourceGroupName "$env:TempResourceGroupName" `
-            -StorageAccount "${{ secrets.AZURE_STORAGE_ACCOUNT }}" `
-            -SubscriptionId "${{ secrets.AZURE_SUBSCRIPTION_ID }}" `
-            -ClientId "${{ secrets.AZURE_CLIENT_ID }}" `
-            -ClientSecret "${{ secrets.AZURE_CLIENT_SECRET }}" `
-            -TenantId "${{ secrets.AZURE_TENANT_ID }}"
-
   upload:
-    if: ${{ inputs.upload_image }}
     runs-on: ubicloud-standard-16
-    needs: build
     env:
-      IMAGE_NAME: ${{ needs.build.outputs.image_name }}
-      IMAGE_SUFFIX: ${{ needs.build.outputs.image_suffix }}
       MC_HOST_ubicloud: ${{ secrets.MINIO_CONNECTION_STRING }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
-
-      - name: Install azcopy
-        run: |
-          curl -L10 -o azcopy_v10.tar.gz "https://aka.ms/downloadazcopy-v10-linux"
-          tar --strip-components=1 --exclude=*.txt -xzvf azcopy_v10.tar.gz
-          rm azcopy_v10.tar.gz
-          sudo mv azcopy /usr/bin/azcopy
-          sudo chmod +x /usr/bin/azcopy
-          azcopy --version
+        uses: actions/checkout@v4
 
       - name: Install MinIO client
         run: |
@@ -206,11 +44,6 @@ jobs:
           sudo chmod +x /usr/bin/mc
           mc --version
 
-      - name: Install qemu tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qemu-utils
-
       - name: Set MinIO root certificates
         run: |
           mkdir -p ~/.mc/certs/CAs
@@ -218,52 +51,47 @@ jobs:
           ${{ secrets.MINIO_ROOT_CERTIFICATES }}
           EOT
 
-      - name: Azure login
-        uses: azure/login@v1
-        with:
-          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
-
-      - name: Download the VHD image from Azure
-        env:
-          AZCOPY_CONCURRENCY_VALUE: 16
+      - name: Set image details
+        id: set_image_details
         run: |
-          sas_token=$(az storage blob generate-sas \
-            --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT }} \
-            --container-name images \
-            --name "${{ env.IMAGE_NAME }}.vhd" \
-            --permissions r \
-            --expiry "$(date --date='now +120 minutes' +'%Y-%m-%dT%H:%M:%SZ')" \
-            --full-uri \
-            --output tsv)
+          case "${{ inputs.image_type }}" in
+            "ubuntu-noble")
+              image_format="img"
+              [[ "${{ inputs.image_arch }}" = "x64" ]] && arch="amd64" || arch="arm64"
+              download_url="https://cloud-images.ubuntu.com/releases/noble/release-${{ inputs.image_version }}/ubuntu-24.04-server-cloudimg-${arch}.img"        
+              ;;
+            "ubuntu-jammy")
+              image_format="img"
+              [[ "${{ inputs.image_arch }}" = "x64" ]] && arch="amd64" || arch="arm64"
+              download_url="https://cloud-images.ubuntu.com/releases/jammy/release-${{ inputs.image_version }}/ubuntu-22.04-server-cloudimg-${arch}.img"        
+              ;;
+            "almalinux-8")
+              image_format="qcow2"
+              [[ "${{ inputs.image_arch }}" = "arm64" ]] && exit 1
+              download_url="https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-${{ inputs.image_version }}.x86_64.qcow2"        
+              ;;
+            "almalinux-9")
+              image_format="qcow2"
+              [[ "${{ inputs.image_arch }}" = "x64" ]] && arch="x86_64" || arch="aarch64"
+              download_url="https://repo.almalinux.org/almalinux/9/cloud/${arch}/images/AlmaLinux-9-GenericCloud-${{ inputs.image_version }}.${arch}.qcow2"        
+          esac
+          
+          echo "IMAGE_DOWNLOAD_URL=$download_url" >> $GITHUB_OUTPUT
+          echo "IMAGE_FILE_NAME=${{ inputs.image_type }}-${{ inputs.image_arch }}-${{ inputs.image_version }}.$image_format" >> $GITHUB_OUTPUT
 
-          azcopy copy "$sas_token" "${{ env.IMAGE_NAME }}.vhd"
-
-      - name: Convert VHD to RAW
-        run: qemu-img convert -f vpc -O raw ${{ env.IMAGE_NAME }}.vhd ${{ env.IMAGE_NAME }}.raw
+      - name: Download image from the source
+        run: |
+          curl -f -L10 -o "${{ steps.set_image_details.outputs.IMAGE_FILE_NAME }}" "${{ steps.set_image_details.outputs.IMAGE_DOWNLOAD_URL }}"
 
       - name: Create MinIO bucket
         run: mc mb --ignore-existing ubicloud/ubicloud-images
 
-      - name: Set image name output
-        id: set_image_name
+      - name: Upload the image to MinIO with version
         run: |
-          case "${{ inputs.image_type }}" in
-            "ubuntu-20.04") image_name="github-ubuntu-2004-x64" ;;
-            "ubuntu-20.04.arm64") image_name="github-ubuntu-2004-arm64" ;;
-            "ubuntu-22.04") image_name="github-ubuntu-2204-x64" ;;
-            "ubuntu-22.04.arm64") image_name="github-ubuntu-2204-arm64" ;;
-            "ubuntu-22.04.gpu") image_name="github-gpu-ubuntu-2204-x64" ;;
-            "ubuntu-minimal") image_name="github-ubuntu-minimal-x64" ;;
-            "ubuntu-postgres") image_name="postgres-ubuntu-2204-x64" ;;
-          esac
-          echo "MINIO_IMAGE_NAME=$image_name-${{ env.IMAGE_SUFFIX }}" >> $GITHUB_OUTPUT
-
-      - name: Upload the RAW image to MinIO with version
-        run: |
-          mc cp ./${{ env.IMAGE_NAME }}.raw ubicloud/ubicloud-images/${{ steps.set_image_name.outputs.MINIO_IMAGE_NAME }}.raw
+          mc cp ./${{ steps.set_image_details.outputs.IMAGE_FILE_NAME }} ubicloud/ubicloud-images/${{ steps.set_image_details.outputs.IMAGE_FILE_NAME }}
 
       - name: Calculate SHA256 checksum
         run: |
-          sha256sum ${{ env.IMAGE_NAME }}.raw > ${{ env.IMAGE_NAME }}.raw.sha256
-          cat ${{ env.IMAGE_NAME }}.raw.sha256
-          mc cp ./${{ env.IMAGE_NAME }}.raw.sha256 ubicloud/ubicloud-images/${{ steps.set_image_name.outputs.MINIO_IMAGE_NAME }}.raw.sha256
+          sha256sum ${{ steps.set_image_details.outputs.IMAGE_FILE_NAME }} > ${{ steps.set_image_details.outputs.IMAGE_FILE_NAME }}.sha256
+          cat ${{ steps.set_image_details.outputs.IMAGE_FILE_NAME }}.sha256
+          mc cp ./${{ steps.set_image_details.outputs.IMAGE_FILE_NAME }}.sha256 ubicloud/ubicloud-images/${{ steps.set_image_details.outputs.IMAGE_FILE_NAME }}.sha256
