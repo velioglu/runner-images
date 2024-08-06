@@ -1,13 +1,8 @@
-| Announcements |
-|-|
-| [[Windows ,Ubuntu, MacOs ] Breaking change: Updating  Azure PowerShell Module version as 12.5.x   from  2025-07-04](https://github.com/actions/runner-images/issues/12333) |
-| [[Windows & Ubuntu] .NET 6 will be removed from the images on  2025-08-01.](https://github.com/actions/runner-images/issues/12241) |
-***
 # Ubuntu 22.04
 - OS Version: 22.04.5 LTS
-- Kernel Version: 6.8.0-1029-azure
-- Image Version: 20250615.1.0
-- Systemd version: 249.11-0ubuntu3.16
+- Kernel Version: 6.8.0-1025-azure
+- Image Version: 20250406.1.1
+- Systemd version: 249.11-0ubuntu3.15
 
 ## Installed Software
 
@@ -31,9 +26,9 @@
 
 ### Package Management
 - cpan 1.64
-- Helm 3.18.2
-- Homebrew 4.5.6
-- Miniconda 25.3.1
+- Helm 3.17.2
+- Homebrew 4.4.28
+- Miniconda 25.1.1
 - Npm 10.8.2
 - NuGet 6.6.1.2
 - Pip 22.0.2
@@ -389,4 +384,3 @@ Use the following command as a part of your job to start the service: 'sudo syst
 | xz-utils               | 5.2.5-2ubuntu1                      |
 | zip                    | 3.0-12build2                        |
 | zsync                  | 0.6.2-3ubuntu1                      |
-
