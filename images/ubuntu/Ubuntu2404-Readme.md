@@ -1,13 +1,7 @@
-| Announcements |
-|-|
-| [[Windows & Ubuntu] Breaking change : Maven 3.8.* version will be updated to  Maven 3.9.*  from January 10,2025](https://github.com/actions/runner-images/issues/11093) |
-| [[Ubuntu] Breaking Change: runner user will have UID 1001 instead of 1000 for larger runners](https://github.com/actions/runner-images/issues/10936) |
-| [Ubuntu-latest workflows will use Ubuntu-24.04 image](https://github.com/actions/runner-images/issues/10636) |
-***
 # Ubuntu 24.04
 - OS Version: 24.04.1 LTS
 - Kernel Version: 6.8.0-1017-azure
-- Image Version: 20241215.1.0
+- Image Version: 20250105.1.1
 - Systemd version: 255.4-1ubuntu8.4
 
 ## Installed Software
@@ -30,15 +24,15 @@
 
 ### Package Management
 - cpan 1.64
-- Helm 3.16.3
-- Homebrew 4.4.11
-- Miniconda 24.9.2
+- Helm 3.16.4
+- Homebrew 4.4.15
+- Miniconda 24.11.1
 - Npm 10.8.2
 - Pip 24.0
 - Pip3 24.0
 - Pipx 1.7.1
 - RubyGems 3.4.20
-- Vcpkg (build from commit b545373a9)
+- Vcpkg (build from commit 1420fe276)
 - Yarn 1.22.22
 
 #### Environment variables
@@ -57,7 +51,7 @@ to accomplish this.
 
 ### Project Management
 - Ant 1.10.14
-- Gradle 8.11.1
+- Gradle 8.12
 - Lerna 8.1.9
 - Maven 3.8.8
 
@@ -68,11 +62,11 @@ to accomplish this.
 - Bazelisk 1.25.0
 - Bicep 0.32.4
 - Buildah 1.33.7
-- CMake 3.31.2
+- CMake 3.31.3
 - CodeQL Action Bundle 2.20.0
 - Docker Amazon ECR Credential Helper 0.9.0
 - Docker Compose v2 2.27.1
-- Docker-Buildx 0.19.2
+- Docker-Buildx 0.19.3
 - Docker Client 26.1.3
 - Docker Server 26.1.3
 - Fastlane 2.226.0
@@ -81,7 +75,7 @@ to accomplish this.
 - Git-ftp 1.6.0
 - Haveged 1.9.14
 - jq 1.7
-- Kind 0.25.0
+- Kind 0.26.0
 - Kubectl 1.32.0
 - Kustomize 5.5.0
 - MediaInfo 24.01
@@ -92,9 +86,9 @@ to accomplish this.
 - nvm 0.40.1
 - OpenSSL 3.0.13-0ubuntu3.4
 - Packer 1.11.2
-- Parcel 2.13.2
+- Parcel 2.13.3
 - Podman 4.9.3
-- Pulumi 3.143.0
+- Pulumi 3.145.0
 - Skopeo 1.13.3
 - Sphinx Open Source Search Server 2.2.11
 - yamllint 1.35.1
@@ -102,13 +96,13 @@ to accomplish this.
 - zstd 1.5.6
 
 ### CLI Tools
-- AWS CLI 2.22.17
+- AWS CLI 2.22.31
 - AWS CLI Session Manager Plugin 1.2.694.0
 - AWS SAM CLI 1.132.0
 - Azure CLI 2.67.0
 - Azure CLI (azure-devops) 1.0.1
-- GitHub CLI 2.63.2
-- Google Cloud CLI 503.0.0
+- GitHub CLI 2.65.0
+- Google Cloud CLI 505.0.0
 
 ### Java
 | Version              | Environment Variable |
@@ -127,28 +121,28 @@ Both Xdebug and PCOV extensions are installed, but only Xdebug is enabled.
 ```
 
 ### Haskell Tools
-- Cabal 3.12.1.0
-- GHC 9.10.1
-- GHCup 0.1.30.0
-- Stack 3.1.1
+- Cabal 3.14.1.1
+- GHC 9.12.1
+- GHCup 0.1.40.0
+- Stack 3.3.1
 
 ### Rust Tools
-- Cargo 1.83.0
-- Rust 1.83.0
-- Rustdoc 1.83.0
+- Cargo 1.84.0
+- Rust 1.84.0
+- Rustdoc 1.84.0
 - Rustup 1.27.1
 
 #### Packages
 - Rustfmt 1.8.0
 
 ### Browsers and Drivers
-- Google Chrome 131.0.6778.139
-- ChromeDriver 131.0.6778.108
+- Google Chrome 131.0.6778.264
+- ChromeDriver 131.0.6778.264
 - Chromium 131.0.6778.0
-- Microsoft Edge 131.0.2903.99
-- Microsoft Edge WebDriver 131.0.2903.87
+- Microsoft Edge 131.0.2903.112
+- Microsoft Edge WebDriver 131.0.2903.112
 - Selenium server 4.27.0
-- Mozilla Firefox 133.0
+- Mozilla Firefox 134.0
 - Geckodriver 0.35.0
 
 #### Environment variables
@@ -196,8 +190,8 @@ Use the following command as a part of your job to start the service: 'sudo syst
 - 22.12.0
 
 #### Python
-- 3.9.20
-- 3.10.15
+- 3.9.21
+- 3.10.16
 - 3.11.11
 - 3.12.8
 
@@ -211,7 +205,7 @@ Use the following command as a part of your job to start the service: 'sudo syst
 #### PowerShell Modules
 - Az: 12.1.0
 - Microsoft.Graph: 2.25.0
-- Pester: 5.6.1
+- Pester: 5.7.1
 - PSScriptAnalyzer: 1.23.0
 
 ### Web Servers
@@ -225,7 +219,7 @@ Use the following command as a part of your job to start the service: 'sudo syst
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Android Command Line Tools | 12.0                                                                                                                                                                                                                                      |
 | Android SDK Build-tools    | 35.0.0<br>34.0.0                                                                                                                                                                                                                          |
-| Android SDK Platforms      | android-35-ext14 (rev 1)<br>android-35 (rev 1)<br>android-34-ext8 (rev 1)<br>android-34-ext12 (rev 1)<br>android-34-ext11 (rev 1)<br>android-34-ext10 (rev 1)<br>android-34 (rev 3)<br>android-33-ext5 (rev 1)<br>android-33-ext4 (rev 1) |
+| Android SDK Platforms      | android-35-ext14 (rev 1)<br>android-35 (rev 2)<br>android-34-ext8 (rev 1)<br>android-34-ext12 (rev 1)<br>android-34-ext11 (rev 1)<br>android-34-ext10 (rev 1)<br>android-34 (rev 3)<br>android-33-ext5 (rev 1)<br>android-33-ext4 (rev 1) |
 | Android Support Repository | 47.0.0                                                                                                                                                                                                                                    |
 | Google Play services       | 49                                                                                                                                                                                                                                        |
 | Google Repository          | 58                                                                                                                                                                                                                                        |
@@ -253,9 +247,9 @@ Use the following command as a part of your job to start the service: 'sudo syst
 | brotli                 | 1.1.0-2build2               |
 | bzip2                  | 1.0.8-5.1build0.1           |
 | coreutils              | 9.4-3ubuntu6                |
-| curl                   | 8.5.0-2ubuntu10.5           |
+| curl                   | 8.5.0-2ubuntu10.6           |
 | dbus                   | 1.14.10-4ubuntu4.1          |
-| dnsutils               | 1:9.18.28-0ubuntu0.24.04.1  |
+| dnsutils               | 1:9.18.30-0ubuntu0.24.04.1  |
 | dpkg                   | 1.22.6ubuntu6.1             |
 | dpkg-dev               | 1.22.6ubuntu6.1             |
 | fakeroot               | 1.33-1                      |
@@ -315,4 +309,3 @@ Use the following command as a part of your job to start the service: 'sudo syst
 | xz-utils               | 5.6.1+really5.4.5-1build0.1 |
 | zip                    | 3.0-13ubuntu0.1             |
 | zsync                  | 0.6.2-5build1               |
-
