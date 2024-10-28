@@ -11,6 +11,7 @@ on:
         options:
           - ubuntu-noble
           - ubuntu-jammy
+          - debian-12
           - almalinux-9
           - almalinux-8
 
@@ -64,6 +65,11 @@ jobs:
               image_format="img"
               [[ "${{ inputs.image_arch }}" = "x64" ]] && arch="amd64" || arch="arm64"
               download_url="https://cloud-images.ubuntu.com/releases/jammy/release-${{ inputs.image_version }}/ubuntu-22.04-server-cloudimg-${arch}.img"        
+              ;;
+            "debian-12")
+              image_format="raw"
+              [[ "${{ inputs.image_arch }}" = "x64" ]] && arch="amd64" || arch="arm64"
+              download_url="https://cloud.debian.org/images/cloud/bookworm/${{ inputs.image_version }}/debian-12-genericcloud-${arch}-${{ inputs.image_version }}.raw"
               ;;
             "almalinux-8")
               image_format="qcow2"
