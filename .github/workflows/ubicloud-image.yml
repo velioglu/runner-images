@@ -13,7 +13,6 @@ on:
           - ubuntu-jammy
           - debian-12
           - almalinux-9
-          - almalinux-8
 
       image_arch:
         description: Image Arch
@@ -70,11 +69,6 @@ jobs:
               image_format="raw"
               [[ "${{ inputs.image_arch }}" = "x64" ]] && arch="amd64" || arch="arm64"
               download_url="https://cloud.debian.org/images/cloud/bookworm/${{ inputs.image_version }}/debian-12-genericcloud-${arch}-${{ inputs.image_version }}.raw"
-              ;;
-            "almalinux-8")
-              image_format="qcow2"
-              [[ "${{ inputs.image_arch }}" = "arm64" ]] && exit 1
-              download_url="https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-${{ inputs.image_version }}.x86_64.qcow2"        
               ;;
             "almalinux-9")
               image_format="qcow2"
