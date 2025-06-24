@@ -3,32 +3,50 @@
     {
       "image_type": "ubuntu-22.04",
       "readme": "Ubuntu2204-Readme.md",
-      "image_name": "github-ubuntu-2204-x64"
+      "template": "ubuntu-22.04.pkr.hcl",
+      "image_name": "github-ubuntu-2204-x64",
+      "vm_size": "Standard_D4s_v4",
+      "image_sku": "22_04-lts"
     },
     {
       "image_type": "ubuntu-22.04.arm64",
       "readme": "Ubuntu2204-Readme.md",
-      "image_name": "github-ubuntu-2204-arm64"
+      "template": "ubuntu-22.04.pkr.hcl",
+      "image_name": "github-ubuntu-2204-arm64",
+      "vm_size": "Standard_D4ps_v5",
+      "image_sku": "22_04-lts-arm64"
     },
     {
       "image_type": "ubuntu-22.04.gpu",
       "readme": "Ubuntu2204-Readme.md",
-      "image_name": "github-gpu-ubuntu-2204-x64"
+      "template": "ubuntu-22.04.gpu.pkr.hcl",
+      "image_name": "github-gpu-ubuntu-2204-x64",
+      "vm_size": "Standard_D4s_v4",
+      "image_sku": "22_04-lts"
     },
     {
       "image_type": "ubuntu-24.04",
       "readme": "Ubuntu2404-Readme.md",
-      "image_name": "github-ubuntu-2404-x64"
+      "template": "ubuntu-24.04.pkr.hcl",
+      "image_name": "github-ubuntu-2404-x64",
+      "vm_size": "Standard_D4s_v4",
+      "image_sku": "server-gen1"
     },
     {
       "image_type": "ubuntu-24.04.arm64",
       "readme": "Ubuntu2404-Readme.md",
-      "image_name": "github-ubuntu-2404-arm64"
+      "template": "ubuntu-24.04.pkr.hcl",
+      "image_name": "github-ubuntu-2404-arm64",
+      "vm_size": "Standard_D4ps_v5",
+      "image_sku": "server-arm64"
     },
     {
       "image_type": "ubuntu-minimal",
       "readme": "Ubuntu2204-Readme.md",
-      "image_name": "github-ubuntu-minimal-x64"
+      "template": "ubuntu-minimal.pkr.hcl",
+      "image_name": "github-ubuntu-minimal-x64",
+      "vm_size": "Standard_D4s_v4",
+      "image_sku": "22_04-lts"
     }
   ]
 }

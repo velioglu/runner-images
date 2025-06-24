@@ -156,8 +156,7 @@ variable "gallery_resource_group_name" {
 
 variable "gallery_image_name" {
   type    = string
-  # default = "${env("GALLERY_IMAGE_NAME")}"
-  default = "RunnerImage-ubuntu-22.04.arm64"
+  default = "${env("GALLERY_IMAGE_NAME")}"
 }
 
 variable "gallery_image_version" {

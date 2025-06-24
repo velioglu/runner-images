@@ -77,10 +77,8 @@ jobs:
         shell: pwsh
         id: setvars
         run: |
-          $ImageType = "${{ matrix.image_type }}"
-          $TemplateDirectoryName = if ($ImageType.StartsWith("ubuntu")) { "ubuntu/templates" } else { "windows/templates" }
-          $TemplateDirectoryPath = Join-Path "images" $TemplateDirectoryName | Resolve-Path
-          $TemplatePath = Join-Path $TemplateDirectoryPath "$ImageType.pkr.hcl"
+          $TemplateDirectoryPath = Join-Path "images" "ubuntu/templates" | Resolve-Path
+          $TemplatePath = Join-Path $TemplateDirectoryPath "${{ matrix.template }}"
           "TemplateDirectoryPath=$TemplateDirectoryPath" >> $env:GITHUB_ENV
           "TemplatePath=$TemplatePath" >> $env:GITHUB_ENV
 
@@ -98,7 +96,10 @@ jobs:
             -SubscriptionId "${{ secrets.AZURE_SUBSCRIPTION_ID }}" `
             -TenantId "${{ secrets.AZURE_TENANT_ID }}" `
             -Location "${{ env.AZURE_LOCATION }}" `
-            -ImageVersion "${{ inputs.image_version }}"
+            -ImageVersion "${{ inputs.image_version }}" `
+            -ImageType "${{ matrix.image_type }}" `
+            -ImageSku "${{ matrix.image_sku }}" `
+            -VmSize "${{ matrix.vm_size }}"
         env:
           PACKER_LOG: 1
           PACKER_LOG_PATH: "/tmp/packer-log.txt"
@@ -107,9 +108,7 @@ jobs:
         if: ${{ inputs.build_image }}
         shell: pwsh
         run: |
-          $ImageType = "${{ matrix.image_type }}"
-          $rootDirectoryName = if ($ImageType.StartsWith("ubuntu")) { "ubuntu" } else { "windows" }
-          $rootDirectoryPath = Join-Path "images" $rootDirectoryName | Resolve-Path
+          $rootDirectoryPath = Join-Path "images" "ubuntu" | Resolve-Path
 
           $readmePath = Join-Path $rootDirectoryPath "${{ matrix.readme }}"
           $softwareReportPath = Join-Path $rootDirectoryPath "software-report.json"

@@ -127,7 +127,7 @@ variable "virtual_network_subnet_name" {
 
 variable "vm_size" {
   type    = string
-  default = "Standard_D4s_v4"
+  default = "Standard_D4s_v4" # Conflict anchor: We pass this from the build script, so it can be overridden
 }
 
 variable "image_offer" {
@@ -157,8 +157,7 @@ variable "gallery_resource_group_name" {
 
 variable "gallery_image_name" {
   type    = string
-  # default = "${env("GALLERY_IMAGE_NAME")}"
-  default = "RunnerImage-ubuntu-22.04"
+  default = "${env("GALLERY_IMAGE_NAME")}"
 }
 
 variable "gallery_image_version" {

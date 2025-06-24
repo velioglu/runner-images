@@ -14,7 +14,10 @@ param(
     [String] [Parameter (Mandatory=$false)] $VirtualNetworkSubnet,
     [String] [Parameter (Mandatory=$false)] $AllowedInboundIpAddresses = "[]",
     [hashtable] [Parameter (Mandatory=$false)] $Tags = @{},
-    [String] [Parameter (Mandatory=$false)] $ImageVersion
+    [String] [Parameter (Mandatory=$false)] $ImageVersion,
+    [String] [Parameter (Mandatory=$false)] $ImageType,
+    [String] [Parameter (Mandatory=$false)] $ImageSku,
+    [String] [Parameter (Mandatory=$false)] $VmSize
 )
 
 if (-not (Test-Path $TemplatePath))
@@ -63,8 +66,11 @@ packer build    -var "client_id=$ClientId" `
                 -var "allowed_inbound_ip_addresses=$($AllowedInboundIpAddresses)" `
                 -var "azure_tags=$azure_tags" `
                 -var "image_version=$ImageVersion" `
+                -var "image_sku=$ImageSku" `
+                -var "vm_size=$VmSize" `
                 -var "gallery_name=GitHubRunnerImages" `
                 -var "gallery_resource_group_name=$ImageResourceGroupName" `
+                -var "gallery_image_name=RunnerImage-$ImageType" `
                 -var "gallery_image_version=$ImageVersion" `
                 -color=false `
                 $TemplatePath `
