@@ -197,8 +197,8 @@ source "azure-arm" "build_image" {
   image_publisher                        = "${var.image_publisher}"
   image_sku                              = "${var.image_sku}"
   location                               = "${var.location}"
-  managed_image_name                     = "${var.managed_image_name}"
-  managed_image_resource_group_name      = "${var.managed_image_resource_group_name}"
+  # managed_image_name                     = "${var.managed_image_name}"
+  # managed_image_resource_group_name      = "${var.managed_image_resource_group_name}"
   os_disk_size_gb                        = var.os_disk_size_gb
   os_type                                = var.image_os_type
   private_virtual_network_with_public_ip = "${var.private_virtual_network_with_public_ip}"
