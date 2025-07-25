@@ -44,6 +44,22 @@ chown -R packer:packer actions-runner
 # See https://github.com/actions/runner/issues/1703
 cat <<EOT > ./actions-runner/run-withenv.sh
 #!/bin/bash
+echo "\$(date '+%Y-%m-%d %H:%M:%S') Starting run env..."
+elapsed=0
+while [ ! -f ./actions-runner/.jit_token ]; do
+  if [ "\$elapsed" -ge "5000" ]; then
+    echo "Timeout reached. File not found: ./actions-runner/.jit_token"
+    exit 1
+  fi
+  echo "\$(date '+%Y-%m-%d %H:%M:%S') Waiting for .jit_token to be created..."
+  sleep 0.5
+  elapsed=\$((elapsed + 1))
+done
+echo "\$(date '+%Y-%m-%d %H:%M:%S') JIT file there..."
+if [ -f ./actions-runner/.ubicloud_info ]; then
+  jq -s '.[1] + [.[0]]' ./actions-runner/.ubicloud_info /imagegeneration/imagedata.json
+fi
+
 mapfile -t env </etc/environment
 JIT_CONFIG="\$(cat ./actions-runner/.jit_token)"
 exec env -- "\${env[@]}" ./actions-runner/run.sh --jitconfig "\$JIT_CONFIG"
@@ -57,6 +73,7 @@ chmod +x ./actions-runner/run-withenv.sh
 sudo tee /etc/systemd/system/runner-script.service <<'EOT'
 [Unit]
 Description=runner-script
+After=network.target
 
 [Service]
 RemainAfterExit=yes
@@ -64,8 +81,12 @@ User=runner
 Group=runner
 WorkingDirectory=/home/runner
 ExecStart=/home/runner/actions-runner/run-withenv.sh
+
+[Install]
+WantedBy=multi-user.target
 EOT
 sudo systemctl daemon-reload
+sudo systemctl enable runner-script.service
 
 # GitHub environment variables are only available in the workflow, not for unix
 # user. We need some of these variables to run some features such as Ubicloud
