@@ -9,7 +9,8 @@ echo 'runner ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/98-runner
 
 # runner unix user needed access to manipulate the Docker daemon.
 # Default GitHub hosted runners have additional adm,systemd-journal groups.
-usermod -a -G docker,adm,systemd-journal runner
+# usermod -a -G docker,adm,systemd-journal runner
+usermod -a -G adm,systemd-journal runner
 
 # Some configuration files such as $PATH related to the user's home directory
 # need to be changed. GitHub recommends to run post-generation scripts after
