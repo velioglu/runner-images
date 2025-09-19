@@ -67,6 +67,10 @@ jobs:
         with:
           version: 1.9.4
 
+      - name: Initialize Packer plugins
+        run: |
+          packer init images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
+
       - name: Validate Packer template
         run: |
           packer validate images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
