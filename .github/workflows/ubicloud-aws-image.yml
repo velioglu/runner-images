@@ -1,0 +1,130 @@
+name: Build AWS AMI
+run-name: AWS AMI - ${{ inputs.image_version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_version:
+        description: "Image version in semver format"
+        required: true
+        type: string
+      ami_name:
+        description: "Name for the AMI"
+        required: false
+        default: "github-ubuntu-22.04-aws"
+        type: string
+      ami_description:
+        description: "Description for the AMI"
+        required: false
+        default: "GitHub Ubuntu 22.04 AMI for AWS"
+        type: string
+      aws_region:
+        description: "AWS region to build the AMI in"
+        required: false
+        default: "eu-central-1"
+        type: string
+      instance_type:
+        description: "EC2 instance type for building"
+        required: false
+        default: "t3.micro"
+        type: string
+      build_image:
+        description: "Build AMI"
+        default: true
+        type: boolean
+
+concurrency: "aws-ami-${{ inputs.image_version }}"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AMI_NAME: "${{ inputs.ami_name }}-${{ inputs.image_version }}"
+  AMI_DESCRIPTION: "${{ inputs.ami_description }} - Version ${{ inputs.image_version }}"
+  AWS_REGION: "${{ inputs.aws_region }}"
+  INSTANCE_TYPE: "${{ inputs.instance_type }}"
+
+jobs:
+  build-ami:
+    name: Build AWS AMI
+    runs-on: ubuntu-latest
+    if: ${{ inputs.build_image }}
+    
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: 1.9.4
+
+      - name: Validate Packer template
+        run: |
+          packer validate images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
+
+      - name: Build AMI
+        run: |
+          packer build \
+            -var "ami_name=${{ env.AMI_NAME }}" \
+            -var "ami_description=${{ env.AMI_DESCRIPTION }}" \
+            -var "region=${{ env.AWS_REGION }}" \
+            -var "instance_type=${{ env.INSTANCE_TYPE }}" \
+            images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
+        env:
+          PACKER_LOG: 1
+          PACKER_LOG_PATH: "/tmp/packer-log.txt"
+
+      - name: Upload Packer logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packer-logs-${{ github.run_number }}
+          path: /tmp/packer-log.txt
+          retention-days: 30
+
+      - name: Get AMI ID
+        id: get-ami-id
+        run: |
+          # Extract AMI ID from Packer output
+          AMI_ID=$(grep -o 'ami-[a-z0-9]*' /tmp/packer-log.txt | tail -1)
+          echo "ami_id=$AMI_ID" >> $GITHUB_OUTPUT
+          echo "AMI ID: $AMI_ID"
+
+      - name: Tag AMI
+        if: steps.get-ami-id.outputs.ami_id != ''
+        run: |
+          aws ec2 create-tags \
+            --resources ${{ steps.get-ami-id.outputs.ami_id }} \
+            --tags Key=Name,Value="${{ env.AMI_NAME }}" \
+                   Key=Description,Value="${{ env.AMI_DESCRIPTION }}" \
+                   Key=CreatedBy,Value="GitHub Actions" \
+                   Key=Version,Value="${{ inputs.image_version }}" \
+                   Key=BuildDate,Value="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+      - name: Output AMI Information
+        run: |
+          echo "## AMI Build Complete 🎉" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**AMI ID:** \`${{ steps.get-ami-id.outputs.ami_id }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**AMI Name:** ${{ env.AMI_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Instance Type:** ${{ env.INSTANCE_TYPE }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ inputs.image_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage" >> $GITHUB_STEP_SUMMARY
+          echo "You can now launch an EC2 instance using this AMI:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "aws ec2 run-instances \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --image-id ${{ steps.get-ami-id.outputs.ami_id }} \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --instance-type t3.micro \\" >> $GITHUB_STEP_SUMMARY
+          echo "  --region ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
