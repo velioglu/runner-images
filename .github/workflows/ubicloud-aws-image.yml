@@ -229,16 +229,6 @@ jobs:
         run: |
           echo "Cleaning up infrastructure..."
 
-          # Detach and delete Internet Gateway
-          if [ -n "${{ steps.create-igw.outputs.igw_id }}" ]; then
-            aws ec2 detach-internet-gateway \
-              --internet-gateway-id ${{ steps.create-igw.outputs.igw_id }} \
-              --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} || true
-            aws ec2 delete-internet-gateway \
-              --internet-gateway-id ${{ steps.create-igw.outputs.igw_id }} || true
-            echo "Internet Gateway deleted"
-          fi
-
           # Delete Security Group
           if [ -n "${{ steps.create-sg.outputs.sg_id }}" ]; then
             aws ec2 delete-security-group \
@@ -246,11 +236,19 @@ jobs:
             echo "Security Group deleted"
           fi
 
-          # Delete Route Table (will auto-disassociate)
-          if [ -n "${{ steps.create-route-table.outputs.route_table_id }}" ]; then
-            aws ec2 delete-route-table \
-              --route-table-id ${{ steps.create-route-table.outputs.route_table_id }} || true
-            echo "Route Table deleted"
+          # Disassociate route table from subnet before deleting
+          if [ -n "${{ steps.create-route-table.outputs.route_table_id }}" ] && [ -n "${{ steps.create-subnet.outputs.subnet_id }}" ]; then
+            # Get the association ID
+            ASSOCIATION_ID=$(aws ec2 describe-route-tables \
+              --route-table-ids ${{ steps.create-route-table.outputs.route_table_id }} \
+              --query 'RouteTables[0].Associations[?SubnetId==`${{ steps.create-subnet.outputs.subnet_id }}`].RouteTableAssociationId' \
+              --output text) || true
+
+            if [ -n "$ASSOCIATION_ID" ] && [ "$ASSOCIATION_ID" != "None" ]; then
+              aws ec2 disassociate-route-table \
+                --association-id $ASSOCIATION_ID || true
+              echo "Route table disassociated from subnet"
+            fi
           fi
 
           # Delete Subnet
@@ -258,6 +256,23 @@ jobs:
             aws ec2 delete-subnet \
               --subnet-id ${{ steps.create-subnet.outputs.subnet_id }} || true
             echo "Subnet deleted"
+          fi
+
+          # Delete Route Table
+          if [ -n "${{ steps.create-route-table.outputs.route_table_id }}" ]; then
+            aws ec2 delete-route-table \
+              --route-table-id ${{ steps.create-route-table.outputs.route_table_id }} || true
+            echo "Route Table deleted"
+          fi
+
+          # Delete Internet Gateway
+          if [ -n "${{ steps.create-igw.outputs.igw_id }}" ] && [ -n "${{ steps.create-vpc.outputs.vpc_id }}" ]; then
+            aws ec2 detach-internet-gateway \
+              --internet-gateway-id ${{ steps.create-igw.outputs.igw_id }} \
+              --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} || true
+            aws ec2 delete-internet-gateway \
+              --internet-gateway-id ${{ steps.create-igw.outputs.igw_id }} || true
+            echo "Internet Gateway deleted"
           fi
 
           # Delete VPC

@@ -158,7 +158,7 @@ build {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     inline = [
       "echo 'Installing basic tools...'",
-      "apt-get install -y curl wget git vim htop tree unzip",
+      "apt-get install -y curl wget git vim htop",
       "echo 'Basic tools installed'"
     ]
   }
