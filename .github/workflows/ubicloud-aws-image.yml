@@ -62,6 +62,106 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Create VPC
+        id: create-vpc
+        run: |
+          echo "Creating VPC for Packer build..."
+          VPC_ID=$(aws ec2 create-vpc \
+            --cidr-block 10.0.0.0/16 \
+            --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=packer-build-vpc-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --query 'Vpc.VpcId' --output text)
+          echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
+          echo "VPC created: $VPC_ID"
+
+          # Enable DNS hostnames and resolution
+          aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames
+          aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-support
+
+      - name: Create Internet Gateway
+        id: create-igw
+        run: |
+          echo "Creating Internet Gateway..."
+          IGW_ID=$(aws ec2 create-internet-gateway \
+            --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=packer-build-igw-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --query 'InternetGateway.InternetGatewayId' --output text)
+          echo "igw_id=$IGW_ID" >> $GITHUB_OUTPUT
+          echo "Internet Gateway created: $IGW_ID"
+
+          # Attach Internet Gateway to VPC
+          aws ec2 attach-internet-gateway \
+            --internet-gateway-id $IGW_ID \
+            --vpc-id ${{ steps.create-vpc.outputs.vpc_id }}
+          echo "Internet Gateway attached to VPC"
+
+      - name: Create Subnet
+        id: create-subnet
+        run: |
+          echo "Creating public subnet..."
+
+          # Get the first availability zone in the region
+          AZ=$(aws ec2 describe-availability-zones \
+            --query 'AvailabilityZones[0].ZoneName' --output text)
+          echo "Using availability zone: $AZ"
+
+          SUBNET_ID=$(aws ec2 create-subnet \
+            --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} \
+            --cidr-block 10.0.1.0/24 \
+            --availability-zone $AZ \
+            --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=packer-build-subnet-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --query 'Subnet.SubnetId' --output text)
+          echo "subnet_id=$SUBNET_ID" >> $GITHUB_OUTPUT
+          echo "Subnet created: $SUBNET_ID"
+
+          # Enable auto-assign public IP
+          aws ec2 modify-subnet-attribute \
+            --subnet-id $SUBNET_ID \
+            --map-public-ip-on-launch
+
+      - name: Create Route Table
+        id: create-route-table
+        run: |
+          echo "Creating route table..."
+          ROUTE_TABLE_ID=$(aws ec2 create-route-table \
+            --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} \
+            --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=packer-build-rt-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --query 'RouteTable.RouteTableId' --output text)
+          echo "route_table_id=$ROUTE_TABLE_ID" >> $GITHUB_OUTPUT
+          echo "Route table created: $ROUTE_TABLE_ID"
+
+          # Add route to Internet Gateway
+          aws ec2 create-route \
+            --route-table-id $ROUTE_TABLE_ID \
+            --destination-cidr-block 0.0.0.0/0 \
+            --gateway-id ${{ steps.create-igw.outputs.igw_id }}
+          echo "Route to Internet Gateway added"
+
+          # Associate route table with subnet
+          aws ec2 associate-route-table \
+            --route-table-id $ROUTE_TABLE_ID \
+            --subnet-id ${{ steps.create-subnet.outputs.subnet_id }}
+          echo "Route table associated with subnet"
+
+      - name: Create Security Group
+        id: create-sg
+        run: |
+          echo "Creating security group..."
+          SG_ID=$(aws ec2 create-security-group \
+            --group-name packer-build-sg-${{ github.run_number }} \
+            --description "Security group for Packer AMI build" \
+            --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} \
+            --tag-specifications 'ResourceType=security-group,Tags=[{Key=Name,Value=packer-build-sg-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --query 'GroupId' --output text)
+          echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
+          echo "Security group created: $SG_ID"
+
+          # Add SSH inbound rule (Packer needs SSH access)
+          aws ec2 authorize-security-group-ingress \
+            --group-id $SG_ID \
+            --protocol tcp \
+            --port 22 \
+            --cidr 0.0.0.0/0
+          echo "SSH access rule added to security group"
+
       - name: Setup Packer
         uses: hashicorp/setup-packer@main
         with:
@@ -75,7 +175,11 @@ jobs:
 
       - name: Validate Packer template
         run: |
-          packer validate images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
+          packer validate \
+            -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
+            -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
+            -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
+            images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
 
       - name: Build AMI
         run: |
@@ -84,6 +188,9 @@ jobs:
             -var "ami_description=${{ env.AMI_DESCRIPTION }}" \
             -var "region=${{ env.AWS_REGION }}" \
             -var "instance_type=${{ env.INSTANCE_TYPE }}" \
+            -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
+            -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
+            -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
             images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
         env:
           PACKER_LOG: 1
@@ -117,6 +224,51 @@ jobs:
                    Key=Version,Value="${{ inputs.image_version }}" \
                    Key=BuildDate,Value="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
+      - name: Cleanup Infrastructure
+        if: always()
+        run: |
+          echo "Cleaning up infrastructure..."
+
+          # Detach and delete Internet Gateway
+          if [ -n "${{ steps.create-igw.outputs.igw_id }}" ]; then
+            aws ec2 detach-internet-gateway \
+              --internet-gateway-id ${{ steps.create-igw.outputs.igw_id }} \
+              --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} || true
+            aws ec2 delete-internet-gateway \
+              --internet-gateway-id ${{ steps.create-igw.outputs.igw_id }} || true
+            echo "Internet Gateway deleted"
+          fi
+
+          # Delete Security Group
+          if [ -n "${{ steps.create-sg.outputs.sg_id }}" ]; then
+            aws ec2 delete-security-group \
+              --group-id ${{ steps.create-sg.outputs.sg_id }} || true
+            echo "Security Group deleted"
+          fi
+
+          # Delete Route Table (will auto-disassociate)
+          if [ -n "${{ steps.create-route-table.outputs.route_table_id }}" ]; then
+            aws ec2 delete-route-table \
+              --route-table-id ${{ steps.create-route-table.outputs.route_table_id }} || true
+            echo "Route Table deleted"
+          fi
+
+          # Delete Subnet
+          if [ -n "${{ steps.create-subnet.outputs.subnet_id }}" ]; then
+            aws ec2 delete-subnet \
+              --subnet-id ${{ steps.create-subnet.outputs.subnet_id }} || true
+            echo "Subnet deleted"
+          fi
+
+          # Delete VPC
+          if [ -n "${{ steps.create-vpc.outputs.vpc_id }}" ]; then
+            aws ec2 delete-vpc \
+              --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} || true
+            echo "VPC deleted"
+          fi
+
+          echo "Infrastructure cleanup completed"
+
       - name: Output AMI Information
         run: |
           echo "## AMI Build Complete 🎉" >> $GITHUB_STEP_SUMMARY
@@ -126,6 +278,11 @@ jobs:
           echo "**Region:** ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
           echo "**Instance Type:** ${{ env.INSTANCE_TYPE }}" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ inputs.image_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Infrastructure Used" >> $GITHUB_STEP_SUMMARY
+          echo "- **VPC:** ${{ steps.create-vpc.outputs.vpc_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Subnet:** ${{ steps.create-subnet.outputs.subnet_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Security Group:** ${{ steps.create-sg.outputs.sg_id }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Usage" >> $GITHUB_STEP_SUMMARY
           echo "You can now launch an EC2 instance using this AMI:" >> $GITHUB_STEP_SUMMARY

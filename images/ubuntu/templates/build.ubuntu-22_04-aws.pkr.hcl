@@ -43,6 +43,27 @@ variable "instance_type" {
   default     = "t3.micro"
 }
 
+# VPC ID for the build environment
+variable "vpc_id" {
+  type        = string
+  description = "VPC ID where the build instance will be launched"
+  default     = ""
+}
+
+# Subnet ID for the build environment
+variable "subnet_id" {
+  type        = string
+  description = "Subnet ID where the build instance will be launched"
+  default     = ""
+}
+
+# Security Group ID for the build environment
+variable "security_group_id" {
+  type        = string
+  description = "Security Group ID for the build instance"
+  default     = ""
+}
+
 # Source Block - This defines HOW to build the AMI
 # "amazon-ebs" is a predefined builder that creates EBS-backed AMIs
 source "amazon-ebs" "simple_ubuntu" {
@@ -56,6 +77,12 @@ source "amazon-ebs" "simple_ubuntu" {
   instance_type = "${var.instance_type}"
   ssh_username  = "ubuntu"  # Default user for Ubuntu AMIs
   
+  # VPC Configuration
+  vpc_id                      = "${var.vpc_id}"
+  subnet_id                   = "${var.subnet_id}"
+  security_group_ids          = ["${var.security_group_id}"]
+  associate_public_ip_address = true
+
   # Source AMI Filter - This finds the base Ubuntu AMI to build from
   source_ami_filter {
     filters = {
