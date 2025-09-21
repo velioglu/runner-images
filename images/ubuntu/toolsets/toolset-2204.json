@@ -11,14 +11,6 @@
         ]
       },
       {
-        "name": "PyPy",
-        "arch": "x64",
-        "platform": "linux",
-        "versions": [
-          "3.11"
-        ]
-      },
-      {
         "name": "node",
         "url": "https://raw.githubusercontent.com/actions/node-versions/main/versions-manifest.json",
         "platform": "linux",
@@ -74,6 +66,7 @@
       "ndk": {
         "default": "27",
         "versions": [
+          "26",
           "27"
         ]
       }
@@ -209,12 +202,12 @@
         {
           "plugin": "buildx",
           "version": "latest",
-          "asset": "linux-amd64"
+          "asset": "linux-arm64"
         },
         {
           "plugin": "compose",
           "version": "2.38.2",
-          "asset": "linux-x86_64"
+          "asset": "linux-aarch64"
         }
       ]
     },
