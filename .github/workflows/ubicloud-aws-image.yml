@@ -186,7 +186,6 @@ jobs:
           packer build \
             -var "ami_name=${{ env.AMI_NAME }}" \
             -var "ami_description=${{ env.AMI_DESCRIPTION }}" \
-            -var "aws_default_region=${{ env.AWS_REGION }}" \
             -var "region=${{ env.AWS_REGION }}" \
             -var "instance_type=${{ env.INSTANCE_TYPE }}" \
             -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \

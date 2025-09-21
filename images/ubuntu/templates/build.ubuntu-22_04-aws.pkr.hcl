@@ -50,7 +50,7 @@ variable "installer_script_folder" {
 
 variable "region" {
   type    = string
-  default = "${env("AWS_DEFAULT_REGION")}"
+  default = "${env("REGION")}"
 }
 
 variable "source_ami_owner" {
