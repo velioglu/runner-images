@@ -63,6 +63,17 @@ variable "source_ami_name" {
   default = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
 }
 
+variable "vpc_id" {
+  type    = string
+  default = "${env("VPC_ID")}"
+}
+
+variable "security_group_id" {
+  type        = string
+  description = "Security Group ID for the build instance"
+  default = "${env("SECURITY_GROUP_ID")}"
+}
+
 // make sure the subnet auto-assigns public IPs
 variable "subnet_id" {
   type    = string
@@ -102,6 +113,8 @@ source "amazon-ebs" "build_ebs" {
   instance_type                             = "${var.instance_type}"
   ssh_username                              = "ubuntu"
   subnet_id                                 = "${var.subnet_id}"
+  vpc_id                                    = "${var.vpc_id}"
+  security_group_id                         = "${var.security_group_id}"
   associate_public_ip_address               = "true"
   force_deregister                          = "true"
   force_delete_snapshot                     = "true"
