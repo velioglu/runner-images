@@ -26,7 +26,7 @@ on:
       instance_type:
         description: "EC2 instance type for building"
         required: false
-        default: "t3.micro"
+        default: "r7g.large"
         type: string
       build_image:
         description: "Build AMI"
@@ -175,7 +175,7 @@ jobs:
 
       - name: Validate Packer template
         run: |
-          packer validate \
+          packer validate
             -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
             -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
             -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
@@ -186,11 +186,14 @@ jobs:
           packer build \
             -var "ami_name=${{ env.AMI_NAME }}" \
             -var "ami_description=${{ env.AMI_DESCRIPTION }}" \
+            -var "aws_default_region=${{ env.AWS_REGION }}" \
             -var "region=${{ env.AWS_REGION }}" \
             -var "instance_type=${{ env.INSTANCE_TYPE }}" \
             -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
             -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
             -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
+            -var "image_os=ubuntu22" \
+            -var "image_version=${{ inputs.image_version }}" \
             images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
         env:
           PACKER_LOG: 1

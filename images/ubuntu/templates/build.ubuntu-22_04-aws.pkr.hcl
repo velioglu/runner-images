@@ -1,8 +1,3 @@
-# Simple Packer Template for Building Ubuntu AMI
-# This is a minimal template to get you started with Packer
-
-# Packer Configuration Block
-# This tells Packer which plugins are required
 packer {
   required_plugins {
     amazon = {
@@ -12,107 +7,110 @@ packer {
   }
 }
 
-# Variable Definitions
-# These are like parameters you can customize when running the build
-
-# Name of the AMI that will be created
 variable "ami_name" {
-  type        = string
-  description = "Name for the AMI"
-  default     = "my-simple-ubuntu-ami"
+  type    = string
+  default = "${env("AMI_NAME")}"
 }
 
-# Description for the AMI
 variable "ami_description" {
-  type        = string
-  description = "Description for the AMI"
-  default     = "Simple Ubuntu 22.04 AMI created with Packer"
+  type    = string
+  default = "${env("AMI_DESCRIPTION")}"
 }
 
-# AWS region where the AMI will be built
+variable "helper_script_folder" {
+  type    = string
+  default = "/imagegeneration/helpers"
+}
+
+variable "imagedata_file" {
+  type    = string
+  default = "/imagegeneration/imagedata.json"
+}
+
+variable "image_folder" {
+  type    = string
+  default = "/imagegeneration"
+}
+
+variable "image_os" {
+  type    = string
+  // ex: ubuntu22
+  default = "${env("IMAGE_OS")}"
+}
+
+variable "image_version" {
+  type    = string
+  default = "${env("IMAGE_VERSION")}"
+}
+
+variable "installer_script_folder" {
+  type    = string
+  default = "/imagegeneration/installers"
+}
+
 variable "region" {
-  type        = string
-  description = "AWS region to build the AMI in"
-  default     = "us-east-1"
+  type    = string
+  default = "${env("AWS_DEFAULT_REGION")}"
 }
 
-# Instance type to use for building (smaller = cheaper)
-variable "instance_type" {
-  type        = string
-  description = "EC2 instance type for building"
-  default     = "t3.micro"
+variable "source_ami_owner" {
+  type    = string
+  default = "099720109477"
 }
 
-# VPC ID for the build environment
-variable "vpc_id" {
-  type        = string
-  description = "VPC ID where the build instance will be launched"
-  default     = ""
+variable "source_ami_name" {
+  type    = string
+  default = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
 }
 
-# Subnet ID for the build environment
+// make sure the subnet auto-assigns public IPs
 variable "subnet_id" {
-  type        = string
-  description = "Subnet ID where the build instance will be launched"
-  default     = ""
+  type    = string
+  default = "${env("SUBNET_ID")}"
 }
 
-# Security Group ID for the build environment
-variable "security_group_id" {
-  type        = string
-  description = "Security Group ID for the build instance"
-  default     = ""
+variable "volume_size" {
+  type    = number
+  default = 30
 }
 
-# Source Block - This defines HOW to build the AMI
-# "amazon-ebs" is a predefined builder that creates EBS-backed AMIs
-source "amazon-ebs" "simple_ubuntu" {
-  
-  # Basic AMI Configuration
-  ami_name        = "${var.ami_name}"
-  ami_description = "${var.ami_description}"
-  region          = "${var.region}"
-  
-  # Instance Configuration
+variable "volume_type" {
+  type    = string
+  default = "gp3"
+}
+
+source "amazon-ebs" "build_ebs" {
+  aws_polling {
+    delay_seconds = 30
+    max_attempts  = 300
+  }
+
+  temporary_security_group_source_public_ip = true
+  ami_name                                  = "${var.ami_name}"
+  ami_description                           = "${var.ami_description}"
+  ami_virtualization_type                   = "hvm"
+  # make AMIs publicly accessible
+  ami_groups                                = ["all"]
+  ebs_optimized                             = true
+  region                                    = "${var.region}"
   instance_type = "${var.instance_type}"
-  ssh_username  = "ubuntu"  # Default user for Ubuntu AMIs
-  
-  # VPC Configuration
-  vpc_id                      = "${var.vpc_id}"
-  subnet_id                   = "${var.subnet_id}"
-  security_group_ids          = ["${var.security_group_id}"]
-  associate_public_ip_address = true
+  ssh_username                              = "ubuntu"
+  subnet_id                                 = "${var.subnet_id}"
+  associate_public_ip_address               = "true"
+  force_deregister                          = "true"
+  force_delete_snapshot                     = "true"
 
-  # Source AMI Filter - This finds the base Ubuntu AMI to build from
-  source_ami_filter {
-    filters = {
-      # Look for Ubuntu 22.04 LTS
-      name                = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
-      # Use HVM virtualization (modern, better performance)
-      virtualization-type = "hvm"
-      # Use EBS-backed (not instance store)
-      root-device-type    = "ebs"
-    }
-    # Canonical's AWS account ID (they publish official Ubuntu AMIs)
-    owners      = ["099720109477"]
-    # Use the most recent matching AMI
-    most_recent = true
-  }
-  
-  # Storage Configuration
-  # This configures the root volume of the build instance
+  // make underlying snapshot public
+  snapshot_groups = ["all"]
+
   launch_block_device_mappings {
-    device_name           = "/dev/sda1"  # Root device
-    volume_size           = 8            # 8GB (minimum for Ubuntu)
-    volume_type           = "gp3"        # Modern, cost-effective storage
-    delete_on_termination = true         # Delete when instance terminates
-    encrypted             = false        # Not encrypted (can be changed)
+    device_name = "/dev/sda1"
+    volume_type = "${var.volume_type}"
+    volume_size = "${var.volume_size}"
+    delete_on_termination = "true"
+    encrypted = "false"
   }
-  
-  # Security and Access
-  # Allow Packer to connect via SSH
-  ssh_clear_authorized_keys = true
-  
+
   # Tags for the build instance (temporary)
   run_tags = {
     Name    = "packer-build-${var.ami_name}"
@@ -131,60 +129,224 @@ source "amazon-ebs" "simple_ubuntu" {
     Name        = "${var.ami_name}-snapshot"
     CreatedBy   = "Packer"
   }
-}
 
-# Build Block - This defines WHAT to do during the build process
+  source_ami_filter {
+    filters = {
+      virtualization-type = "hvm"
+      name                = "${var.source_ami_name}"
+      root-device-type    = "ebs"
+    }
+    owners      = ["${var.source_ami_owner}"]
+    most_recent = true
+  }
+}
 build {
-  # Use the source we defined above
-  sources = ["source.amazon-ebs.simple_ubuntu"]
   
-  # Provisioner 1: Update the system
-  # This runs commands on the instance after it boots
+  sources = ["source.amazon-ebs.build_ebs"]
+
   provisioner "shell" {
-    # Execute commands as root using sudo
-    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    # Inline commands to run
-    inline = [
-      "echo 'Starting system update...'",
-      "apt-get update",
-      "apt-get upgrade -y",
-      "echo 'System update completed'"
-    ]
+    execute_command     = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts             = ["${path.root}/../custom/pre.sh"]
   }
-  
-  # Provisioner 2: Install basic tools
-  # Install some common utilities
+
+  # Dummy file added to please Azure script compatibility
+  provisioner "file" {
+    destination = "/tmp/waagent.conf"
+    source      = "${path.root}/../custom/waagent.conf"
+  }
+
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "echo 'Installing basic tools...'",
-      "apt-get install -y curl wget git vim htop",
-      "echo 'Basic tools installed'"
-    ]
+    inline          = ["mv /tmp/waagent.conf /etc"]
   }
-  
-  # Provisioner 3: Create a welcome message
-  # Add a custom message that shows when someone logs in
+
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "echo 'Creating welcome message...'",
-      "echo 'Welcome to your custom Ubuntu AMI!' > /etc/motd",
-      "echo 'Built with Packer on $(date)' >> /etc/motd",
-      "echo 'Welcome message created'"
-    ]
+    inline          = ["mkdir ${var.image_folder}", "chmod 777 ${var.image_folder}"]
   }
-  
-  # Provisioner 4: Clean up
-  # Remove temporary files and caches to reduce AMI size
+
+  provisioner "file" {
+    destination = "${var.helper_script_folder}"
+    source      = "${path.root}/../scripts/helpers"
+  }
+
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "echo 'Cleaning up...'",
-      "apt-get clean",
-      "rm -rf /tmp/*",
-      "rm -rf /var/tmp/*",
-      "echo 'Cleanup completed'"
+    script          = "${path.root}/../scripts/build/configure-apt-mock.sh"
+  }
+
+  provisioner "shell" {
+    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}","DEBIAN_FRONTEND=noninteractive"]
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts          = [
+      "${path.root}/../scripts/build/install-ms-repos.sh",
+      "${path.root}/../scripts/build/configure-apt-sources.sh",
+      "${path.root}/../scripts/build/configure-apt.sh"
     ]
   }
+
+  provisioner "shell" {
+    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    script          = "${path.root}/../scripts/build/configure-limits.sh"
+  }
+
+  provisioner "file" {
+    destination = "${var.installer_script_folder}"
+    source      = "${path.root}/../scripts/build"
+  }
+
+  provisioner "file" {
+    destination = "${var.image_folder}"
+    sources     = [
+      "${path.root}/../assets/post-gen",
+      "${path.root}/../scripts/tests",
+      "${path.root}/../scripts/docs-gen"
+    ]
+  }
+
+  provisioner "file" {
+    destination = "${var.image_folder}/docs-gen/"
+    source      = "${path.root}/../../../helpers/software-report-base"
+  }
+
+  provisioner "file" {
+    destination = "${var.installer_script_folder}/toolset.json"
+    source      = "${path.root}/../toolsets/toolset-2204.json"
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline          = [
+      "mv ${var.image_folder}/docs-gen ${var.image_folder}/SoftwareReport",
+      "mv ${var.image_folder}/post-gen ${var.image_folder}/post-generation"
+    ]
+  }
+
+  provisioner "shell" {
+    environment_vars = ["IMAGE_VERSION=${var.image_version}", "IMAGEDATA_FILE=${var.imagedata_file}"]
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts          = ["${path.root}/../scripts/build/configure-image-data.sh"]
+  }
+
+  provisioner "shell" {
+    environment_vars = ["IMAGE_VERSION=${var.image_version}", "IMAGE_OS=${var.image_os}", "HELPER_SCRIPTS=${var.helper_script_folder}"]
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts          = ["${path.root}/../scripts/build/configure-environment.sh"]
+  }
+
+  provisioner "shell" {
+    environment_vars = ["DEBIAN_FRONTEND=noninteractive", "HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts          = ["${path.root}/../scripts/build/install-apt-vital.sh"]
+  }
+
+  provisioner "shell" {
+    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts          = ["${path.root}/../scripts/build/install-powershell.sh"]
+  }
+
+  provisioner "shell" {
+    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+    execute_command  = "sudo sh -c '{{ .Vars }} pwsh -f {{ .Path }}'"
+    scripts          = ["${path.root}/../scripts/build/Install-PowerShellModules.ps1"]
+  }
+
+  provisioner "shell" {
+    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}", "DEBIAN_FRONTEND=noninteractive"]
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts          = [
+      "${path.root}/../scripts/build/install-actions-cache.sh",
+      "${path.root}/../scripts/build/install-runner-package.sh",
+      "${path.root}/../scripts/build/install-apt-common.sh",
+      "${path.root}/../scripts/build/install-aws-tools.sh",
+      "${path.root}/../scripts/build/install-clang.sh",
+      "${path.root}/../scripts/build/install-cmake.sh",
+      "${path.root}/../scripts/build/install-gcc-compilers.sh",
+      "${path.root}/../scripts/build/install-git.sh",
+      "${path.root}/../scripts/build/install-github-cli.sh",
+      "${path.root}/../scripts/build/install-java-tools.sh",
+      "${path.root}/../scripts/build/install-kubernetes-tools.sh",
+      "${path.root}/../scripts/build/install-nvm.sh",
+      "${path.root}/../scripts/build/install-nodejs.sh",
+      // this ends up in/ home/ubuntu/.cache for some reason, so not useful anyway
+      // "${path.root}/../scripts/build/install-bazel.sh",
+      "${path.root}/../scripts/build/install-postgresql.sh",
+      "${path.root}/../scripts/build/install-ruby.sh",
+      "${path.root}/../scripts/build/install-rust.sh",
+      "${path.root}/../scripts/build/install-terraform.sh",
+      "${path.root}/../scripts/build/configure-dpkg.sh",
+      "${path.root}/../scripts/build/install-yq.sh",
+      // "${path.root}/../scripts/build/install-android-sdk.sh",
+      # hard to install on arm64 for now
+      # "${path.root}/../scripts/build/install-pypy.sh",
+      "${path.root}/../scripts/build/install-python.sh",
+      "${path.root}/../scripts/build/install-zstd.sh"
+    ]
+  }
+
+  provisioner "shell" {
+    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}", "DOCKERHUB_PULL_IMAGES=no"]
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts          = ["${path.root}/../scripts/build/install-docker.sh"]
+  }
+
+  # provisioner "shell" {
+  #   environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+  #   execute_command  = "sudo sh -c '{{ .Vars }} pwsh -f {{ .Path }}'"
+  #   scripts          = ["${path.root}/../scripts/build/Install-Toolset.ps1", "${path.root}/../scripts/build/Configure-Toolset.ps1"]
+  # }
+
+  // provisioner "shell" {
+  //   environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+  //   execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+  //   scripts          = ["${path.root}/../scripts/build/install-pipx-packages.sh"]
+  // }
+
+  // provisioner "shell" {
+  //   environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "DEBIAN_FRONTEND=noninteractive", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+  //   execute_command  = "/bin/sh -c '{{ .Vars }} {{ .Path }}'"
+  //   scripts          = ["${path.root}/../scripts/build/install-homebrew.sh"]
+  // }
+
+  provisioner "shell" {
+    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}"]
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts          = ["${path.root}/../scripts/build/configure-snap.sh"]
+  }
+
+  provisioner "shell" {
+    execute_command     = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts             = ["${path.root}/../custom/runner-user.sh"]
+  }
+
+  provisioner "shell" {
+    execute_command   = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    inline            = ["echo 'Reboot VM'", "sudo reboot"]
+  }
+
+  provisioner "shell" {
+    execute_command     = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    pause_before        = "1m0s"
+    scripts             = ["${path.root}/../scripts/build/cleanup.sh"]
+    start_retry_timeout = "10m"
+  }
+
+  provisioner "shell" {
+    environment_vars = ["HELPER_SCRIPT_FOLDER=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}", "IMAGE_FOLDER=${var.image_folder}"]
+    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts          = ["${path.root}/../scripts/build/configure-system.sh", "${path.root}/../custom/after-reboot.sh"]
+  }
+
+  # provisioner "file" {
+  #   destination = "/tmp/"
+  #   source      = "${path.root}/../assets/ubuntu2204.conf"
+  # }
+
+  # provisioner "shell" {
+  #   execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+  #   inline          = ["mkdir -p /etc/vsts", "cp /tmp/ubuntu2204.conf /etc/vsts/machine_instance.conf"]
+  # }
+
 }
