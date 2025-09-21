@@ -175,7 +175,11 @@ jobs:
 
       - name: Validate Packer template
         run: |
-          packer validate images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
+          packer validate \
+            -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
+            -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
+            -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
+            images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
 
       - name: Build AMI
         run: |

@@ -79,6 +79,12 @@ variable "volume_type" {
   default = "gp3"
 }
 
+variable "instance_type" {
+  type        = string
+  description = "EC2 instance type for building"
+  default     = "${env("INSTANCE_TYPE")}"
+}
+
 source "amazon-ebs" "build_ebs" {
   aws_polling {
     delay_seconds = 30
@@ -93,7 +99,7 @@ source "amazon-ebs" "build_ebs" {
   ami_groups                                = ["all"]
   ebs_optimized                             = true
   region                                    = "${var.region}"
-  instance_type = "${var.instance_type}"
+  instance_type                             = "${var.instance_type}"
   ssh_username                              = "ubuntu"
   subnet_id                                 = "${var.subnet_id}"
   associate_public_ip_address               = "true"
