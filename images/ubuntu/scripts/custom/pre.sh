@@ -20,7 +20,7 @@ snap remove lxd
 snap remove core20
 rm -rf /var/lib/snapd/seed/snaps
 
-wget https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+wget https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/arm64/latest/amazon-cloudwatch-agent.deb
 dpkg -i -E ./amazon-cloudwatch-agent.deb
 systemctl disable amazon-cloudwatch-agent
 rm -f ./amazon-cloudwatch-agent.deb
@@ -31,15 +31,15 @@ auto_update = false
 EOF
 
 # https://docs.aws.amazon.com/systems-manager/latest/userguide/agent-install-ubuntu-64-deb.html
-wget https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_amd64/amazon-ssm-agent.deb
+wget https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/debian_arm64/amazon-ssm-agent.deb
 dpkg -i amazon-ssm-agent.deb
 systemctl enable amazon-ssm-agent
 rm -f amazon-ssm-agent.deb
 
 apt-get update -qq
-wget https://runs-on.s3.eu-west-1.amazonaws.com/tools/efs-utils/amazon-efs-utils-2.3.0-1_amd64.deb
-apt-get install -y ./amazon-efs-utils-2.3.0-1_amd64.deb
-rm -f amazon-efs-utils-2.3.0-1_amd64.deb
+wget https://runs-on.s3.eu-west-1.amazonaws.com/tools/efs-utils/amazon-efs-utils-2.3.0-1_arm64.deb
+apt-get install -y ./amazon-efs-utils-2.3.0-1_arm64.deb
+rm -f amazon-efs-utils-2.3.0-1_arm64.deb
 
 # avoid nvme0n1: Process '/usr/bin/unshare -m /usr/bin/snap auto-import --mount=/dev/nvme0n1' failed with exit code 1.
 snap set system experimental.hotplug=false
