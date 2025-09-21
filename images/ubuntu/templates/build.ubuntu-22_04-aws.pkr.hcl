@@ -165,13 +165,13 @@ build {
 
   provisioner "shell" {
     execute_command     = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    scripts             = ["${path.root}/../custom/pre.sh"]
+    scripts             = ["${path.root}/../scripts/custom/pre.sh"]
   }
 
   # Dummy file added to please Azure script compatibility
   provisioner "file" {
     destination = "/tmp/waagent.conf"
-    source      = "${path.root}/../custom/waagent.conf"
+    source      = "${path.root}/../scripts/custom/waagent.conf"
   }
 
   provisioner "shell" {
@@ -336,7 +336,7 @@ build {
 
   provisioner "shell" {
     execute_command     = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    scripts             = ["${path.root}/../custom/runner-user.sh"]
+    scripts             = ["${path.root}/../scripts/custom/runner-user.sh"]
   }
 
   provisioner "shell" {
@@ -355,7 +355,7 @@ build {
   provisioner "shell" {
     environment_vars = ["HELPER_SCRIPT_FOLDER=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}", "IMAGE_FOLDER=${var.image_folder}"]
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    scripts          = ["${path.root}/../scripts/build/configure-system.sh", "${path.root}/../custom/after-reboot.sh"]
+    scripts          = ["${path.root}/../scripts/build/configure-system.sh", "${path.root}/../scripts/custom/after-reboot.sh"]
   }
 
   # provisioner "file" {
