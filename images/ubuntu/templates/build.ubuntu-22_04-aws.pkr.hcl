@@ -107,7 +107,6 @@ source "amazon-ebs" "build_ebs" {
   ami_description                           = "${var.ami_description}"
   ami_virtualization_type                   = "hvm"
   # make AMIs publicly accessible
-  ami_groups                                = ["all"]
   ebs_optimized                             = true
   region                                    = "${var.region}"
   instance_type                             = "${var.instance_type}"
@@ -118,9 +117,6 @@ source "amazon-ebs" "build_ebs" {
   associate_public_ip_address               = "true"
   force_deregister                          = "true"
   force_delete_snapshot                     = "true"
-
-  // make underlying snapshot public
-  snapshot_groups = ["all"]
 
   launch_block_device_mappings {
     device_name = "/dev/sda1"
