@@ -60,7 +60,7 @@ variable "source_ami_owner" {
 
 variable "source_ami_name" {
   type    = string
-  default = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+  default = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
 }
 
 variable "vpc_id" {
@@ -175,6 +175,7 @@ build {
     inline          = ["mv /tmp/waagent.conf /etc"]
   }
 
+
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     inline          = ["mkdir ${var.image_folder}", "chmod 777 ${var.image_folder}"]
@@ -274,43 +275,79 @@ build {
       "${path.root}/../scripts/build/install-actions-cache.sh",
       "${path.root}/../scripts/build/install-runner-package.sh",
       "${path.root}/../scripts/build/install-apt-common.sh",
+      "${path.root}/../scripts/build/install-azcopy.sh",
+      // Massive, disabling for now since this is not our target
+      "${path.root}/../scripts/build/install-azure-cli.sh",
+      // "${path.root}/../scripts/build/install-azure-devops-cli.sh",
+      "${path.root}/../scripts/build/install-bicep.sh",
+      "${path.root}/../scripts/build/install-aliyun-cli.sh",
+      "${path.root}/../scripts/build/install-apache.sh",
       "${path.root}/../scripts/build/install-aws-tools.sh",
       "${path.root}/../scripts/build/install-clang.sh",
+      // not enabling it for now, very space consuming
+      // "${path.root}/../scripts/build/install-swift.sh",
       "${path.root}/../scripts/build/install-cmake.sh",
+      // podman systemd unit file should be fixed first
+      // "${path.root}/../scripts/build/install-container-tools.sh",
+      "${path.root}/../scripts/build/install-dotnetcore-sdk.sh",
+      "${path.root}/../scripts/build/install-firefox.sh",
+      "${path.root}/../scripts/build/install-microsoft-edge.sh",
       "${path.root}/../scripts/build/install-gcc-compilers.sh",
+      "${path.root}/../scripts/build/install-gfortran.sh",
       "${path.root}/../scripts/build/install-git.sh",
+      "${path.root}/../scripts/build/install-git-lfs.sh",
       "${path.root}/../scripts/build/install-github-cli.sh",
+      "${path.root}/../scripts/build/install-google-chrome.sh",
+      // so massive, faster to just download if needed
+      // "${path.root}/../scripts/build/install-google-cloud-cli.sh",
       "${path.root}/../scripts/build/install-java-tools.sh",
       "${path.root}/../scripts/build/install-kubernetes-tools.sh",
-      "${path.root}/../scripts/build/install-nvm.sh",
+      // "${path.root}/../scripts/build/install-oc-cli.sh",
+      "${path.root}/../scripts/build/install-leiningen.sh",
+      "${path.root}/../scripts/build/install-miniconda.sh",
+      // "${path.root}/../scripts/build/install-mono.sh",
+      "${path.root}/../scripts/build/install-kotlin.sh",
+      "${path.root}/../scripts/build/install-mysql.sh",
+      "${path.root}/../scripts/build/install-mssql-tools.sh",
+      "${path.root}/../scripts/build/install-sqlpackage.sh",
+      // "${path.root}/../scripts/build/install-nginx.sh",
+      // "${path.root}/../scripts/build/install-nvm.sh",
       "${path.root}/../scripts/build/install-nodejs.sh",
-      // this ends up in/ home/ubuntu/.cache for some reason, so not useful anyway
+      // for some reason doesn't end up in the correct folder, so removing
       // "${path.root}/../scripts/build/install-bazel.sh",
+      "${path.root}/../scripts/build/install-oras-cli.sh",
+      "${path.root}/../scripts/build/install-php.sh",
       "${path.root}/../scripts/build/install-postgresql.sh",
       "${path.root}/../scripts/build/install-ruby.sh",
+      "${path.root}/../scripts/build/install-rlang.sh",
       "${path.root}/../scripts/build/install-rust.sh",
+      // "${path.root}/../scripts/build/install-julia.sh",
+      "${path.root}/../scripts/build/install-sbt.sh",
+      "${path.root}/../scripts/build/install-selenium.sh",
       "${path.root}/../scripts/build/install-terraform.sh",
+      "${path.root}/../scripts/build/install-packer.sh",
+      // "${path.root}/../scripts/build/install-vcpkg.sh",
       "${path.root}/../scripts/build/configure-dpkg.sh",
       "${path.root}/../scripts/build/install-yq.sh",
+      // Use https://github.com/android-actions/setup-android instead (adds 14s)
       // "${path.root}/../scripts/build/install-android-sdk.sh",
-      # hard to install on arm64 for now
-      # "${path.root}/../scripts/build/install-pypy.sh",
+      "${path.root}/../scripts/build/install-pypy.sh",
       "${path.root}/../scripts/build/install-python.sh",
       "${path.root}/../scripts/build/install-zstd.sh"
     ]
   }
 
   provisioner "shell" {
-    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}", "DOCKERHUB_PULL_IMAGES=no"]
+    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts          = ["${path.root}/../scripts/build/install-docker.sh"]
   }
 
-  # provisioner "shell" {
-  #   environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
-  #   execute_command  = "sudo sh -c '{{ .Vars }} pwsh -f {{ .Path }}'"
-  #   scripts          = ["${path.root}/../scripts/build/Install-Toolset.ps1", "${path.root}/../scripts/build/Configure-Toolset.ps1"]
-  # }
+  provisioner "shell" {
+    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+    execute_command  = "sudo sh -c '{{ .Vars }} pwsh -f {{ .Path }}'"
+    scripts          = ["${path.root}/../scripts/build/Install-Toolset.ps1", "${path.root}/../scripts/build/Configure-Toolset.ps1"]
+  }
 
   // provisioner "shell" {
   //   environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
