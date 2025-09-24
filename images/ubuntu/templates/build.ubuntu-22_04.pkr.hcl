@@ -1,5 +1,227 @@
+packer {
+  required_plugins {
+    amazon = {
+      source  = "github.com/hashicorp/amazon"
+      version = "~> 1"
+    }
+  }
+}
+
+
+
+// Authentication related variables
+variable "client_cert_path" {
+  type    = string
+  default = "${env("ARM_CLIENT_CERT_PATH")}"
+}
+variable "client_id" {
+  type    = string
+  default = "${env("ARM_CLIENT_ID")}"
+}
+variable "client_secret" {
+  type      = string
+  default   = "${env("ARM_CLIENT_SECRET")}"
+  sensitive = true
+}
+variable "object_id" {
+  type    = string
+  default = "${env("ARM_OBJECT_ID")}"
+}
+variable "oidc_request_token" {
+  type    = string
+  default = ""
+}
+variable "oidc_request_url" {
+  type    = string
+  default = ""
+}
+variable "subscription_id" {
+  type    = string
+  default = "${env("ARM_SUBSCRIPTION_ID")}"
+}
+variable "tenant_id" {
+  type    = string
+  default = "${env("ARM_TENANT_ID")}"
+}
+variable "use_azure_cli_auth" {
+  type    = bool
+  default = false
+}
+
+// AWS environment related
+variable "ami_name" {
+  type    = string
+  default = "${env("AMI_NAME")}"
+}
+
+variable "ami_description" {
+  type    = string
+  default = "${env("AMI_DESCRIPTION")}"
+}
+
+variable "region" {
+  type    = string
+  default = "${env("REGION")}"
+}
+
+variable "source_ami_owner" {
+  type    = string
+  default = "099720109477"
+}
+
+variable "source_ami_name" {
+  type    = string
+  default = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+}
+
+variable "vpc_id" {
+  type    = string
+  default = "${env("VPC_ID")}"
+}
+
+variable "security_group_id" {
+  type        = string
+  description = "Security Group ID for the build instance"
+  default = "${env("SECURITY_GROUP_ID")}"
+}
+
+// make sure the subnet auto-assigns public IPs
+variable "subnet_id" {
+  type    = string
+  default = "${env("SUBNET_ID")}"
+}
+
+variable "volume_size" {
+  type    = number
+  default = 75
+}
+
+variable "volume_type" {
+  type    = string
+  default = "gp3"
+}
+
+variable "instance_type" {
+  type        = string
+  description = "EC2 instance type for building"
+  default     = "${env("INSTANCE_TYPE")}"
+}
+
+// Image related variables
+variable "dockerhub_login" {
+  type    = string
+  default = "${env("DOCKERHUB_LOGIN")}"
+}
+variable "dockerhub_password" {
+  type    = string
+  default = "${env("DOCKERHUB_PASSWORD")}"
+}
+variable "helper_script_folder" {
+  type    = string
+  default = "/imagegeneration/helpers"
+}
+variable "image_folder" {
+  type    = string
+  default = "/imagegeneration"
+}
+variable "image_os" {
+  type    = string
+  default = "${env("IMAGE_OS")}"
+}
+variable "image_version" {
+  type    = string
+  default = "${env("IMAGE_VERSION")}"
+}
+variable "imagedata_file" {
+  type    = string
+  default = "/imagegeneration/imagedata.json"
+}
+variable "installer_script_folder" {
+  type    = string
+  default = "/imagegeneration/installers"
+}
+variable "install_password" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+variable "install_user" {
+  type    = string
+  default = "installer"
+}
+
+
+
+
+source "amazon-ebs" "image" {
+  aws_polling {
+    delay_seconds = 30
+    max_attempts  = 300
+  }
+
+  temporary_security_group_source_public_ip = true
+  ami_name                                  = var.ami_name
+  ami_description                           = var.ami_description
+  ami_virtualization_type                   = "hvm"
+  # make AMIs publicly accessible
+  ebs_optimized                             = true
+  region                                    = var.region
+  instance_type                             = var.instance_type
+  ssh_username                              = "ubuntu"
+  subnet_id                                 = var.subnet_id
+  vpc_id                                    = var.vpc_id
+  security_group_id                         = var.security_group_id
+  associate_public_ip_address               = "true"
+  force_deregister                          = "true"
+  force_delete_snapshot                     = "true"
+
+  launch_block_device_mappings {
+    device_name = "/dev/sda1"
+    volume_type = var.volume_type
+    volume_size = var.volume_size
+    delete_on_termination = "true"
+    encrypted = "false"
+  }
+
+  # Tags for the build instance (temporary)
+  run_tags = {
+    Name    = "packer-build-${var.ami_name}"
+    Purpose = "AMI Build"
+  }
+  
+  # Tags for the final AMI
+  tags = {
+    Name        = var.ami_name
+    Description = var.ami_description
+    CreatedBy   = "Packer"
+  }
+  
+  # Tags for the EBS snapshot
+  snapshot_tags = {
+    Name        = "${var.ami_name}-snapshot"
+    CreatedBy   = "Packer"
+  }
+
+  source_ami_filter {
+    filters = {
+      virtualization-type = "hvm"
+      name                = var.source_ami_name
+      root-device-type    = "ebs"
+    }
+    owners      = [var.source_ami_owner]
+    most_recent = true
+  }
+}
+
+
+
+
+
+
+
+
 build {
-  sources = ["source.azure-arm.image"]
+  sources = ["source.amazon-ebs.image"]
   name = "ubuntu-22_04"
 
   provisioner "shell" {
@@ -163,7 +385,7 @@ build {
   }
 
   provisioner "shell" {
-    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}", "DOCKERHUB_LOGIN=${var.dockerhub_login}", "DOCKERHUB_PASSWORD=${var.dockerhub_password}"]
+    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts          = ["${path.root}/../scripts/build/install-docker.sh"]
   }

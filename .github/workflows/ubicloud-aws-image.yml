@@ -179,7 +179,7 @@ jobs:
             -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
             -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
             -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
-            images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
+            images/ubuntu/templates/build.ubuntu-22_04.pkr.hcl
 
       - name: Build AMI
         run: |
@@ -193,7 +193,7 @@ jobs:
             -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
             -var "image_os=ubuntu22" \
             -var "image_version=${{ inputs.image_version }}" \
-            images/ubuntu/templates/build.ubuntu-22_04-aws.pkr.hcl
+            images/ubuntu/templates/build.ubuntu-22_04.pkr.hcl
         env:
           PACKER_LOG: 1
           PACKER_LOG_PATH: "/tmp/packer-log.txt"

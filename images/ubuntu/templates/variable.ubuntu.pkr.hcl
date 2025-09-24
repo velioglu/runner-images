@@ -37,86 +37,63 @@ variable "use_azure_cli_auth" {
   default = false
 }
 
-// Azure environment related variables
-variable "allowed_inbound_ip_addresses" {
-  type    = list(string)
-  default = []
-}
-variable "azure_tags" {
-  type    = map(string)
-  default = {}
-}
-variable "build_resource_group_name" {
+// AWS environment related
+variable "ami_name" {
   type    = string
-  default = "${env("BUILD_RG_NAME")}"
+  default = "${env("AMI_NAME")}"
 }
-variable "gallery_image_version" {
+
+variable "ami_description" {
   type    = string
-  default = "${env("GALLERY_IMAGE_VERSION")}"
+  default = "${env("AMI_DESCRIPTION")}"
 }
-variable "gallery_name" {
+
+variable "region" {
   type    = string
-  default = "${env("GALLERY_NAME")}"
+  default = "${env("REGION")}"
 }
-variable "gallery_resource_group_name" {
+
+variable "source_ami_owner" {
   type    = string
-  default = "${env("GALLERY_RG_NAME")}"
+  default = "099720109477"
 }
-variable "gallery_storage_account_type" {
+
+variable "source_ami_name" {
   type    = string
-  default = "${env("GALLERY_STORAGE_ACCOUNT_TYPE")}"
+  default = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
 }
-variable "image_os_type" {
+
+variable "vpc_id" {
   type    = string
-  default = "Linux"
+  default = "${env("VPC_ID")}"
 }
-variable "location" {
+
+variable "security_group_id" {
+  type        = string
+  description = "Security Group ID for the build instance"
+  default = "${env("SECURITY_GROUP_ID")}"
+}
+
+// make sure the subnet auto-assigns public IPs
+variable "subnet_id" {
   type    = string
-  default = ""
+  default = "${env("SUBNET_ID")}"
 }
-variable "managed_image_name" {
-  type    = string
-  default = ""
-}
-variable "managed_image_resource_group_name" {
-  type    = string
-  default = "${env("ARM_RESOURCE_GROUP")}"
-}
-variable "managed_image_storage_account_type" {
-  type    = string
-  default = "Premium_LRS"
-}
-variable "private_virtual_network_with_public_ip" {
-  type    = bool
-  default = false
-}
-variable "os_disk_size_gb" {
+
+variable "volume_size" {
   type    = number
-  default = null
+  default = 75
 }
-variable "source_image_version" {
+
+variable "volume_type" {
   type    = string
-  default = "latest"
+  default = "gp3"
 }
-variable "temp_resource_group_name" {
-  type    = string
-  default = "${env("TEMP_RESOURCE_GROUP_NAME")}"
-}
-variable "virtual_network_name" {
-  type    = string
-  default = "${env("VNET_NAME")}"
-}
-variable "virtual_network_resource_group_name" {
-  type    = string
-  default = "${env("VNET_RESOURCE_GROUP")}"
-}
-variable "virtual_network_subnet_name" {
-  type    = string
-  default = "${env("VNET_SUBNET")}"
-}
-variable "winrm_username" {         // The username used to connect to the VM via WinRM
-    type    = string                // Also applies to the username used to create the VM
-    default = "packer"
+
+variable "instance_type" {
+  type        = string
+  description = "EC2 instance type for building"
+  default     = "${env("INSTANCE_TYPE")}"
 }
 
 // Image related variables
@@ -138,11 +115,11 @@ variable "image_folder" {
 }
 variable "image_os" {
   type    = string
-  default = ""
+  default = "${env("IMAGE_OS")}"
 }
 variable "image_version" {
   type    = string
-  default = "dev"
+  default = "${env("IMAGE_VERSION")}"
 }
 variable "imagedata_file" {
   type    = string

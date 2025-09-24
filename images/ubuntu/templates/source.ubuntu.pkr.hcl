@@ -1,48 +1,59 @@
-source "azure-arm" "image" {
-  client_cert_path                       = var.client_cert_path
-  client_id                              = var.client_id
-  client_secret                          = var.client_secret
-  object_id                              = var.object_id
-  oidc_request_token                     = var.oidc_request_token
-  oidc_request_url                       = var.oidc_request_url
-  subscription_id                        = var.subscription_id
-  tenant_id                              = var.tenant_id
-  use_azure_cli_auth                     = var.use_azure_cli_auth
-
-  allowed_inbound_ip_addresses           = var.allowed_inbound_ip_addresses
-  build_resource_group_name              = var.build_resource_group_name
-  image_offer                            = local.image_properties.offer
-  image_publisher                        = local.image_properties.publisher
-  image_sku                              = local.image_properties.sku
-  image_version                          = var.source_image_version
-  location                               = var.location
-  managed_image_name                     = can(regex("-arm", var.image_os)) ? null : var.managed_image_name
-  managed_image_resource_group_name      = can(regex("-arm", var.image_os)) ? null : var.managed_image_resource_group_name
-  managed_image_storage_account_type     = var.managed_image_storage_account_type
-  os_disk_size_gb                        = local.image_properties.os_disk_size_gb
-  os_type                                = var.image_os_type
-  private_virtual_network_with_public_ip = var.private_virtual_network_with_public_ip
-  temp_resource_group_name               = var.temp_resource_group_name
-  virtual_network_name                   = var.virtual_network_name
-  virtual_network_resource_group_name    = var.virtual_network_resource_group_name
-  virtual_network_subnet_name            = var.virtual_network_subnet_name
-  vm_size                                = local.image_properties.vm_size
-  winrm_username                         = var.winrm_username
-
-  shared_image_gallery_destination {
-    subscription                         = var.subscription_id
-    gallery_name                         = var.gallery_name
-    resource_group                       = var.gallery_resource_group_name
-    image_name                           = local.image_properties.gallery_image_name
-    image_version                        = var.gallery_image_version
-    storage_account_type                 = var.gallery_storage_account_type
+source "amazon-ebs" "image" {
+  aws_polling {
+    delay_seconds = 30
+    max_attempts  = 300
   }
 
-  dynamic "azure_tag" {
-    for_each = var.azure_tags
-    content {
-      name  = azure_tag.key
-      value = azure_tag.value
+  temporary_security_group_source_public_ip = true
+  ami_name                                  = var.ami_name
+  ami_description                           = var.ami_description
+  ami_virtualization_type                   = "hvm"
+  # make AMIs publicly accessible
+  ebs_optimized                             = true
+  region                                    = var.region
+  instance_type                             = var.instance_type
+  ssh_username                              = "ubuntu"
+  subnet_id                                 = var.subnet_id
+  vpc_id                                    = var.vpc_id
+  security_group_id                         = var.security_group_id
+  associate_public_ip_address               = "true"
+  force_deregister                          = "true"
+  force_delete_snapshot                     = "true"
+
+  launch_block_device_mappings {
+    device_name = "/dev/sda1"
+    volume_type = var.volume_type
+    volume_size = var.volume_size
+    delete_on_termination = "true"
+    encrypted = "false"
+  }
+
+  # Tags for the build instance (temporary)
+  run_tags = {
+    Name    = "packer-build-${var.ami_name}"
+    Purpose = "AMI Build"
+  }
+  
+  # Tags for the final AMI
+  tags = {
+    Name        = var.ami_name
+    Description = var.ami_description
+    CreatedBy   = "Packer"
+  }
+  
+  # Tags for the EBS snapshot
+  snapshot_tags = {
+    Name        = "${var.ami_name}-snapshot"
+    CreatedBy   = "Packer"
+  }
+
+  source_ami_filter {
+    filters = {
+      virtualization-type = "hvm"
+      name                = var.source_ami_name
+      root-device-type    = "ebs"
     }
+    owners      = [var.source_ami_owner]
+    most_recent = true
   }
 }
