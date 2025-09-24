@@ -224,6 +224,22 @@ build {
   sources = ["source.amazon-ebs.image"]
   name = "ubuntu-22_04"
 
+    provisioner "shell" {
+    execute_command     = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts             = ["${path.root}/../scripts/custom/pre.sh"]
+  }
+
+  # Dummy file added to please Azure script compatibility
+  provisioner "file" {
+    destination = "/tmp/waagent.conf"
+    source      = "${path.root}/../scripts/custom/waagent.conf"
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline          = ["mv /tmp/waagent.conf /etc"]
+  }
+
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     inline          = ["mkdir ${var.image_folder}", "chmod 777 ${var.image_folder}"]
@@ -313,7 +329,7 @@ build {
   provisioner "shell" {
     environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
     execute_command  = "sudo sh -c '{{ .Vars }} pwsh -f {{ .Path }}'"
-    scripts          = ["${path.root}/../scripts/build/Install-PowerShellModules.ps1", "${path.root}/../scripts/build/Install-PowerShellAzModules.ps1"]
+    scripts          = ["${path.root}/../scripts/build/Install-PowerShellModules.ps1"]
   }
 
   provisioner "shell" {
