@@ -361,7 +361,7 @@ build {
       "${path.root}/../scripts/build/install-github-cli.sh",
       "${path.root}/../scripts/build/install-google-chrome.sh",
       //"${path.root}/../scripts/build/install-google-cloud-cli.sh",
-      "${path.root}/../scripts/build/install-haskell.sh",
+      //"${path.root}/../scripts/build/install-haskell.sh",
       "${path.root}/../scripts/build/install-heroku.sh",
       "${path.root}/../scripts/build/install-java-tools.sh",
       "${path.root}/../scripts/build/install-kubernetes-tools.sh",
@@ -409,20 +409,20 @@ build {
   provisioner "shell" {
     environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
     execute_command  = "sudo sh -c '{{ .Vars }} pwsh -f {{ .Path }}'"
-    scripts          = ["${path.root}/../scripts/build/Install-Toolset.ps1", "${path.root}/../scripts/build/Configure-Toolset.ps1"]
+    scripts          = ["${path.root}/../scripts/build/Install-Toolset.ps1"]
   }
 
-  provisioner "shell" {
-    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
-    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    scripts          = ["${path.root}/../scripts/build/install-pipx-packages.sh"]
-  }
+//  provisioner "shell" {
+//    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+//    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+//    scripts          = ["${path.root}/../scripts/build/install-pipx-packages.sh"]
+//  }
 
-  provisioner "shell" {
-    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "DEBIAN_FRONTEND=noninteractive", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
-    execute_command  = "/bin/sh -c '{{ .Vars }} {{ .Path }}'"
-    scripts          = ["${path.root}/../scripts/build/install-homebrew.sh"]
-  }
+//  provisioner "shell" {
+//    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "DEBIAN_FRONTEND=noninteractive", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+//    execute_command  = "/bin/sh -c '{{ .Vars }} {{ .Path }}'"
+//    scripts          = ["${path.root}/../scripts/build/install-homebrew.sh"]
+//  }
 
   provisioner "shell" {
     environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}"]
@@ -443,22 +443,22 @@ build {
     start_retry_timeout = "10m"
   }
 
-  provisioner "shell" {
-    environment_vars = ["IMAGE_VERSION=${var.image_version}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
-    inline           = ["pwsh -File ${var.image_folder}/SoftwareReport/Generate-SoftwareReport.ps1 -OutputDirectory ${var.image_folder}", "pwsh -File ${var.image_folder}/tests/RunAll-Tests.ps1 -OutputDirectory ${var.image_folder}"]
-  }
+//  provisioner "shell" {
+//    environment_vars = ["IMAGE_VERSION=${var.image_version}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+//    inline           = ["pwsh -File ${var.image_folder}/SoftwareReport/Generate-SoftwareReport.ps1 -OutputDirectory ${var.image_folder}", "pwsh -File ${var.image_folder}/tests/RunAll-Tests.ps1 -OutputDirectory ${var.image_folder}"]
+//  }
 
-  provisioner "file" {
-    destination = "${path.root}/../Ubuntu2204-Readme.md"
-    direction   = "download"
-    source      = "${var.image_folder}/software-report.md"
-  }
+//  provisioner "file" {
+//    destination = "${path.root}/../Ubuntu2204-Readme.md"
+//    direction   = "download"
+//    source      = "${var.image_folder}/software-report.md"
+//  }
 
-  provisioner "file" {
-    destination = "${path.root}/../software-report.json"
-    direction   = "download"
-    source      = "${var.image_folder}/software-report.json"
-  }
+//  provisioner "file" {
+//    destination = "${path.root}/../software-report.json"
+//    direction   = "download"
+//    source      = "${var.image_folder}/software-report.json"
+//  }
 
   provisioner "shell" {
     environment_vars = ["HELPER_SCRIPT_FOLDER=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}", "IMAGE_FOLDER=${var.image_folder}"]
@@ -466,21 +466,21 @@ build {
     scripts          = ["${path.root}/../scripts/build/configure-system.sh"]
   }
 
-  provisioner "file" {
-    destination = "/tmp/"
-    source      = "${path.root}/../assets/ubuntu2204.conf"
-  }
+//  provisioner "file" {
+//    destination = "/tmp/"
+//    source      = "${path.root}/../assets/ubuntu2204.conf"
+//  }
 
-  provisioner "shell" {
-    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    inline          = ["mkdir -p /etc/vsts", "cp /tmp/ubuntu2204.conf /etc/vsts/machine_instance.conf"]
-  }
+//  provisioner "shell" {
+//    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+//    inline          = ["mkdir -p /etc/vsts", "cp /tmp/ubuntu2204.conf /etc/vsts/machine_instance.conf"]
+//  }
 
-  provisioner "shell" {
-    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}"]
-    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    scripts          = ["${path.root}/../scripts/build/post-build-validation.sh"]
-  }
+//  provisioner "shell" {
+//    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}"]
+//    execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+//    scripts          = ["${path.root}/../scripts/build/post-build-validation.sh"]
+//  }
 
   // provisioner "shell" {
   //   execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
