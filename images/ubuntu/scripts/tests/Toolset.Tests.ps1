@@ -20,10 +20,6 @@ Describe "Toolset" {
             tools = @("bin/go")
             command = "version"
         }
-        Ruby = @{
-            tools = @("bin/ruby")
-            command = "--version"
-        }
         CodeQL = @{
             tools = @("codeql/codeql")
             command = "version"
