@@ -40,7 +40,7 @@ chmod 700 /home/runneradmin/.ssh
 chmod 600 /home/runneradmin/.ssh/authorized_keys
 
 # Add ubuntu user
-useradd ubuntu --comment Ubuntu --groups adm,audio,cdrom,dialout,dip,floppy,lxd,netdev,plugdev,sudo,video --shell /bin/bash -m
+# useradd ubuntu --comment Ubuntu --groups adm,audio,cdrom,dialout,dip,floppy,lxd,netdev,plugdev,sudo,video --shell /bin/bash -m
 ### End AWS only
 
 
