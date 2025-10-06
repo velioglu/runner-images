@@ -31,6 +31,15 @@ source /etc/environment
 adduser --disabled-password --shell /bin/bash --gecos '' runneradmin
 usermod -a -G sudo,adm,systemd-journal runneradmin
 
+### Begin AWS only
+echo "runneradmin ALL=(ALL:ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/runneradmin
+mkdir -p /home/runneradmin/.ssh
+touch /home/runneradmin/.ssh/authorized_keys
+chown -R runneradmin:runneradmin /home/runneradmin/.ssh
+chmod 700 /home/runneradmin/.ssh
+chmod 600 /home/runneradmin/.ssh/authorized_keys
+### End AWS only
+
 # We placed the script in the "/usr/local/share/" directory while generating
 # the golden image. However, it needs to be moved to the home directory because
 # the runner creates some configuration files at the script location. Since the
@@ -40,7 +49,7 @@ usermod -a -G sudo,adm,systemd-journal runneradmin
 # under "usr/local/share to make sure that the script can be run multiple times idempotently.
 
 cp -R /usr/local/share/actions-runner ./
-chown -R packer:packer actions-runner
+chown -R $USER:$USER actions-runner
 
 # ./env.sh sets some variables for runner to run properly
 ./actions-runner/env.sh
