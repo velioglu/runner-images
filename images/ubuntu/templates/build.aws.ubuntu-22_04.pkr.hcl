@@ -11,6 +11,18 @@ build {
   sources = ["source.amazon-ebs.image"]
   name = "ubuntu-22_04"
 
+
+  # Dummy file added to please Azure script compatibility
+  provisioner "file" {
+    destination = "/tmp/waagent.conf"
+    source      = "${path.root}/../scripts/aws/waagent.conf"
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    inline          = ["mv /tmp/waagent.conf /etc"]
+  }
+
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     inline          = ["mkdir ${var.image_folder}", "chmod 777 ${var.image_folder}"]
