@@ -194,11 +194,11 @@ build {
     scripts          = ["${path.root}/../scripts/build/install-pipx-packages.sh"]
   }
 
-  provisioner "shell" {
-    environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "DEBIAN_FRONTEND=noninteractive", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
-    execute_command  = "/bin/sh -c '{{ .Vars }} {{ .Path }}'"
-    scripts          = ["${path.root}/../scripts/build/install-homebrew.sh"]
-  }
+  //provisioner "shell" {
+  //  environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "DEBIAN_FRONTEND=noninteractive", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}"]
+  //  execute_command  = "/bin/sh -c '{{ .Vars }} {{ .Path }}'"
+  //  scripts          = ["${path.root}/../scripts/build/install-homebrew.sh"]
+  //}
 
   provisioner "shell" {
     environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}"]
@@ -275,7 +275,7 @@ build {
       "${path.root}/../scripts/ubicloud/configure-docker.sh",
       "${path.root}/../scripts/ubicloud/install-cache-proxy.sh",
       "${path.root}/../scripts/ubicloud/install-packages.sh",
-      "${path.root}/../scripts/ubicloud/generalize-image.sh"
+      //"${path.root}/../scripts/ubicloud/generalize-image.sh"
     ]
   }
 }
