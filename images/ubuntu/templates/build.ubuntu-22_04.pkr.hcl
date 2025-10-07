@@ -112,7 +112,6 @@ build {
     environment_vars = ["HELPER_SCRIPTS=${var.helper_script_folder}", "INSTALLER_SCRIPT_FOLDER=${var.installer_script_folder}", "DEBIAN_FRONTEND=noninteractive"]
     execute_command  = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
     scripts          = [
-      "${path.root}/../scripts/build/install-ruby.sh",
       "${path.root}/../scripts/build/install-actions-cache.sh",
       "${path.root}/../scripts/build/install-runner-package.sh",
       "${path.root}/../scripts/build/install-apt-common.sh",
@@ -158,7 +157,7 @@ build {
       "${path.root}/../scripts/build/install-php.sh",
       "${path.root}/../scripts/build/install-postgresql.sh",
       "${path.root}/../scripts/build/install-pulumi.sh",
-      //"${path.root}/../scripts/build/install-ruby.sh",
+      "${path.root}/../scripts/build/install-ruby.sh",
       "${path.root}/../scripts/build/install-rlang.sh",
       "${path.root}/../scripts/build/install-rust.sh",
       "${path.root}/../scripts/build/install-julia.sh",
