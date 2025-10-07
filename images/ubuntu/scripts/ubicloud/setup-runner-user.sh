@@ -49,7 +49,7 @@ chmod 600 /home/runneradmin/.ssh/authorized_keys
 # under "usr/local/share to make sure that the script can be run multiple times idempotently.
 
 cp -R /usr/local/share/actions-runner ./
-chown -R packer:packer actions-runner
+chown -R $USER:$USER actions-runner
 
 # ./env.sh sets some variables for runner to run properly
 ./actions-runner/env.sh

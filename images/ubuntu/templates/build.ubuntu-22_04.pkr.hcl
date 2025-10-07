@@ -276,7 +276,7 @@ build {
       "${path.root}/../scripts/ubicloud/configure-docker.sh",
       "${path.root}/../scripts/ubicloud/install-cache-proxy.sh",
       "${path.root}/../scripts/ubicloud/install-packages.sh",
-      //"${path.root}/../scripts/ubicloud/generalize-image.sh"
+      "${path.root}/../scripts/ubicloud/generalize-image.sh"
     ]
   }
 }
