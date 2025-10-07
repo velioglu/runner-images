@@ -28,6 +28,11 @@ toolset_versions=$(get_toolset_value '.toolcache[] | select(.name | contains("Ru
 platform_version=$(get_toolset_value '.toolcache[] | select(.name | contains("Ruby")) | .platform_version')
 ruby_path="$AGENT_TOOLSDIRECTORY/Ruby"
 
+echo "Package tar names: $package_tar_names"
+echo "Toolset versions: $toolset_versions"
+echo "Platform version: $platform_version"
+echo "Ruby path: $ruby_path"
+
 echo "Check if Ruby hostedtoolcache folder exist..."
 if [[ ! -d $ruby_path ]]; then
     mkdir -p $ruby_path
