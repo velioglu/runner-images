@@ -83,4 +83,6 @@ foreach ($tool in $tools) {
     }
 }
 
+Write-Host "Completed UNTIL THIS BURAK 1 POINT"
+
 Invoke-PesterTests -TestFile "Toolset" -TestName "Toolset"
