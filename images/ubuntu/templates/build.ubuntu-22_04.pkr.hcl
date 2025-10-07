@@ -2,6 +2,14 @@ build {
   sources = ["source.azure-arm.image", "source.amazon-ebs.image"]
   name    = "ubuntu-22_04"
 
+  // =====================================
+  // ========== UBICLOUD AWS EXTRAS ======
+  // =====================================
+  provisioner "shell" {
+    execute_command     = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts             = ["${path.root}/../scripts/ubicloud/pre-aws.sh"]
+    only                = ["amazon-ebs.image"]
+  }
 
   # Dummy file added to please Azure script compatibility
   provisioner "file" {
@@ -15,6 +23,9 @@ build {
     inline          = ["mv /tmp/waagent.conf /etc"]
     only            = ["amazon-ebs.image"]
   }
+  // =====================================
+  // ========== UBICLOUD AWS EXTRAS ======
+  // =====================================
 
   provisioner "shell" {
     execute_command = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
@@ -277,5 +288,11 @@ build {
       "${path.root}/../scripts/ubicloud/install-packages.sh",
       //"${path.root}/../scripts/ubicloud/generalize-image.sh"
     ]
+  }
+
+  provisioner "shell" {
+    execute_command     = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
+    scripts             = ["${path.root}/../scripts/ubicloud/optimize-aws.sh"]
+    only                = ["amazon-ebs.image"]
   }
 }
