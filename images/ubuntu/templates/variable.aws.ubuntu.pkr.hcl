@@ -18,14 +18,9 @@ variable "source_ami_owner" {
   default = "099720109477"
 }
 
-variable "ubuntu_version" {
-  type    = string
-  default = ""
-}
-
 variable "source_ami_name" {
   type    = string
-  default = "ubuntu/images/hvm-ssd/ubuntu-jammy-${var.ubuntu_version}.04-amd64-server-*"
+  default = ""
 }
 
 variable "vpc_id" {

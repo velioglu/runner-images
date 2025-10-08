@@ -297,7 +297,7 @@ build {
 
   provisioner "shell" {
     execute_command     = "sudo sh -c '{{ .Vars }} {{ .Path }}'"
-    scripts             = ["${path.root}/../scripts/ubicloud/optimize-aws.sh"]
+    scripts             = ["${path.root}/../scripts/ubicloud/aws-optimize.sh"]
     only                = ["amazon-ebs.image"]
   }
 }

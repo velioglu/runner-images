@@ -4,38 +4,50 @@ run-name: AWS AMI - ${{ inputs.image_version }}
 on:
   workflow_dispatch:
     inputs:
+      image_types:
+        description: "Comma-separated list of image types to build"
+        required: true
+        default: ubuntu-22.04,ubuntu-24.04
+        type: string
       image_version:
         description: "Image version in semver format"
         required: true
         type: string
-      ubuntu_version:
-        description: "Ubuntu version"
-        required: true
-        default: "22"
-        type: string
-      aws_region:
-        description: "AWS region to build the AMI in"
-        required: true
-        default: "eu-central-1"
-        type: string
-      instance_type:
-        description: "EC2 instance type for building"
-        required: true
-        default: "r7a.large"
-        type: string
+
+concurrency: "${{ inputs.image_types }}-${{ inputs.image_version }}"
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
-  AMI_NAME: "github-runner-ubuntu${{ inputs.ubuntu_version }}-${{ inputs.image_version }}"
-  AMI_DESCRIPTION: "GitHub Runner Ubuntu ${{ inputs.ubuntu_version }} - Version ${{ inputs.image_version }}"
-  AWS_REGION: "${{ inputs.aws_region }}"
-  INSTANCE_TYPE: "${{ inputs.instance_type }}"
-  IMAGE_OS: "ubuntu${{ inputs.ubuntu_version }}"
+  AWS_REGION: "eu-central-1"
+  INSTANCE_TYPE: "r7a.large"
 
 jobs:
-  build-ami:
-    name: Build AWS AMI
+  generate-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
 
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          selected_images="$(echo '${{ inputs.image_types }}' | jq -R -c 'split(",")')"
+          images="$(cat .github/images-aws.json)"
+          matrix="$(echo $images | jq --argjson selecteds "$selected_images" '{include: .include | map(select(.image_type | IN($selecteds[])))}')"
+          echo "matrix<<EOF"$'\n'"$matrix"$'\n'EOF >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: generate-matrix
+    name: build ${{ matrix.image_type }}
+    runs-on: ubicloud-standard-4
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -53,7 +65,7 @@ jobs:
           echo "Creating VPC for Packer build..."
           VPC_ID=$(aws ec2 create-vpc \
             --cidr-block 10.0.0.0/16 \
-            --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=packer-build-vpc-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=packer-build-vpc-${{ github.run_number }}-${{ matrix.image_type }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
             --query 'Vpc.VpcId' --output text)
           echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
           echo "VPC created: $VPC_ID"
@@ -63,7 +75,7 @@ jobs:
         run: |
           echo "Creating Internet Gateway..."
           IGW_ID=$(aws ec2 create-internet-gateway \
-            --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=packer-build-igw-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --tag-specifications 'ResourceType=internet-gateway,Tags=[{Key=Name,Value=packer-build-igw-${{ github.run_number }}-${{ matrix.image_type }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
             --query 'InternetGateway.InternetGatewayId' --output text)
           echo "igw_id=$IGW_ID" >> $GITHUB_OUTPUT
           echo "Internet Gateway created: $IGW_ID"
@@ -85,7 +97,7 @@ jobs:
             --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} \
             --cidr-block 10.0.1.0/24 \
             --availability-zone $AZ \
-            --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=packer-build-subnet-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --tag-specifications 'ResourceType=subnet,Tags=[{Key=Name,Value=packer-build-subnet-${{ github.run_number }}-${{ matrix.image_type }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
             --query 'Subnet.SubnetId' --output text)
           echo "subnet_id=$SUBNET_ID" >> $GITHUB_OUTPUT
           echo "Subnet created: $SUBNET_ID"
@@ -100,7 +112,7 @@ jobs:
           echo "Creating route table..."
           ROUTE_TABLE_ID=$(aws ec2 create-route-table \
             --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} \
-            --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=packer-build-rt-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --tag-specifications 'ResourceType=route-table,Tags=[{Key=Name,Value=packer-build-rt-${{ github.run_number }}-${{ matrix.image_type }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
             --query 'RouteTable.RouteTableId' --output text)
           echo "route_table_id=$ROUTE_TABLE_ID" >> $GITHUB_OUTPUT
           echo "Route table created: $ROUTE_TABLE_ID"
@@ -121,10 +133,10 @@ jobs:
         run: |
           echo "Creating security group..."
           SG_ID=$(aws ec2 create-security-group \
-            --group-name packer-build-sg-${{ github.run_number }} \
+            --group-name packer-build-sg-${{ github.run_number }}-${{ matrix.image_type }} \
             --description "Security group for Packer AMI build" \
             --vpc-id ${{ steps.create-vpc.outputs.vpc_id }} \
-            --tag-specifications 'ResourceType=security-group,Tags=[{Key=Name,Value=packer-build-sg-${{ github.run_number }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
+            --tag-specifications 'ResourceType=security-group,Tags=[{Key=Name,Value=packer-build-sg-${{ github.run_number }}-${{ matrix.image_type }}},{Key=Purpose,Value=AMI-Build},{Key=CreatedBy,Value=GitHub-Actions}]' \
             --query 'GroupId' --output text)
           echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
           echo "Security group created: $SG_ID"
@@ -150,29 +162,31 @@ jobs:
       - name: Validate Packer template
         run: |
           packer validate \
-            -only "ubuntu-22_04.amazon-ebs.image" \
-            -var "ami_name=${{ env.AMI_NAME }}" \
-            -var "ami_description=${{ env.AMI_DESCRIPTION }}" \
+            -only "${{ matrix.build_template_name }}.amazon-ebs.image" \
+            -var "ami_name=${{ matrix.ami_name }}-${{ inputs.image_version }}" \
+            -var "ami_description=${{ matrix.ami_description }} - Version ${{ inputs.image_version }}" \
             -var "region=${{ env.AWS_REGION }}" \
             -var "instance_type=${{ env.INSTANCE_TYPE }}" \
             -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
             -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
             -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
-            -var "image_os=${{ inputs.image_os }}" \
+            -var "image_os=${{ matrix.image_os }}" \
+            -var "source_ami_name=${{ matrix.source_ami_name }}" \
             images/ubuntu/templates
 
       - name: Build AMI
         run: |
           packer build \
-            -only "ubuntu-22_04.amazon-ebs.image" \
-            -var "ami_name=${{ env.AMI_NAME }}" \
-            -var "ami_description=${{ env.AMI_DESCRIPTION }}" \
+            -only "${{ matrix.build_template_name }}.amazon-ebs.image" \
+            -var "ami_name=${{ matrix.ami_name }}-${{ inputs.image_version }}" \
+            -var "ami_description=${{ matrix.ami_description }} - Version ${{ inputs.image_version }}" \
             -var "region=${{ env.AWS_REGION }}" \
             -var "instance_type=${{ env.INSTANCE_TYPE }}" \
             -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
             -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
             -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
-            -var "image_os=${{ inputs.image_os }}" \
+            -var "image_os=${{ matrix.image_os }}" \
+            -var "source_ami_name=${{ matrix.source_ami_name }}" \
             -var "image_version=${{ inputs.image_version }}" \
             images/ubuntu/templates
         env:
@@ -184,7 +198,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: packer-logs-${{ github.run_number }}
+          name: packer-logs-${{ github.run_number }}-${{ matrix.image_type }}
           path: /tmp/packer-log.txt
           retention-days: 30
 
@@ -264,7 +278,7 @@ jobs:
           echo "## AMI Build Complete 🎉" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**AMI ID:** \`${{ steps.get-ami-id.outputs.ami_id }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**AMI Name:** ${{ env.AMI_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**AMI Name:** ${{ matrix.ami_name }}-${{ inputs.image_version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Region:** ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
           echo "**Instance Type:** ${{ env.INSTANCE_TYPE }}" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ inputs.image_version }}" >> $GITHUB_STEP_SUMMARY
