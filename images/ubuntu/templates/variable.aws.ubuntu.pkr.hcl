@@ -18,9 +18,14 @@ variable "source_ami_owner" {
   default = "099720109477"
 }
 
+variable "ubuntu_version" {
+  type    = string
+  default = ""
+}
+
 variable "source_ami_name" {
   type    = string
-  default = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+  default = "ubuntu/images/hvm-ssd/ubuntu-jammy-${var.ubuntu_version}.04-amd64-server-*"
 }
 
 variable "vpc_id" {
@@ -33,7 +38,6 @@ variable "security_group_id" {
   default = ""
 }
 
-// make sure the subnet auto-assigns public IPs
 variable "subnet_id" {
   type    = string
   default = ""

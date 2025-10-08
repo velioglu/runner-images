@@ -8,7 +8,6 @@ source "amazon-ebs" "image" {
   ami_name                                  = var.ami_name
   ami_description                           = var.ami_description
   ami_virtualization_type                   = "hvm"
-  # make AMIs publicly accessible
   ebs_optimized                             = true
   region                                    = var.region
   instance_type                             = var.instance_type
@@ -25,23 +24,19 @@ source "amazon-ebs" "image" {
     volume_type = var.volume_type
     volume_size = var.volume_size
     delete_on_termination = "true"
-    encrypted = "false"
   }
 
-  # Tags for the build instance (temporary)
   run_tags = {
     Name    = "packer-build-${var.ami_name}"
     Purpose = "AMI Build"
   }
 
-  # Tags for the final AMI
   tags = {
     Name        = var.ami_name
     Description = var.ami_description
     CreatedBy   = "Packer"
   }
 
-  # Tags for the EBS snapshot
   snapshot_tags = {
     Name        = "${var.ami_name}-snapshot"
     CreatedBy   = "Packer"

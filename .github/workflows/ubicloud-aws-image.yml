@@ -8,48 +8,33 @@ on:
         description: "Image version in semver format"
         required: true
         type: string
-      ami_name:
-        description: "Name for the AMI"
-        required: false
-        default: "github-ubuntu-22.04-aws"
-        type: string
-      ami_description:
-        description: "Description for the AMI"
-        required: false
-        default: "GitHub Ubuntu 22.04 AMI for AWS"
+      ubuntu_version:
+        description: "Ubuntu version"
+        required: true
+        default: "22"
         type: string
       aws_region:
         description: "AWS region to build the AMI in"
-        required: false
+        required: true
         default: "eu-central-1"
         type: string
       instance_type:
         description: "EC2 instance type for building"
-        required: false
+        required: true
         default: "r7a.large"
         type: string
-      build_image:
-        description: "Build AMI"
-        default: true
-        type: boolean
-
-concurrency: "aws-ami-${{ inputs.image_version }}"
-
-permissions:
-  id-token: write
-  contents: read
 
 env:
-  AMI_NAME: "${{ inputs.ami_name }}-${{ inputs.image_version }}"
-  AMI_DESCRIPTION: "${{ inputs.ami_description }} - Version ${{ inputs.image_version }}"
+  AMI_NAME: "github-runner-ubuntu${{ inputs.ubuntu_version }}-${{ inputs.image_version }}"
+  AMI_DESCRIPTION: "GitHub Runner Ubuntu ${{ inputs.ubuntu_version }} - Version ${{ inputs.image_version }}"
   AWS_REGION: "${{ inputs.aws_region }}"
   INSTANCE_TYPE: "${{ inputs.instance_type }}"
+  IMAGE_OS: "ubuntu${{ inputs.ubuntu_version }}"
 
 jobs:
   build-ami:
     name: Build AWS AMI
     runs-on: ubuntu-latest
-    if: ${{ inputs.build_image }}
 
     steps:
       - name: Check out code
@@ -72,9 +57,7 @@ jobs:
             --query 'Vpc.VpcId' --output text)
           echo "vpc_id=$VPC_ID" >> $GITHUB_OUTPUT
           echo "VPC created: $VPC_ID"
-          # Enable DNS hostnames and resolution
-          aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-hostnames
-          aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-support
+
       - name: Create Internet Gateway
         id: create-igw
         run: |
@@ -89,6 +72,7 @@ jobs:
             --internet-gateway-id $IGW_ID \
             --vpc-id ${{ steps.create-vpc.outputs.vpc_id }}
           echo "Internet Gateway attached to VPC"
+
       - name: Create Subnet
         id: create-subnet
         run: |
@@ -109,6 +93,7 @@ jobs:
           aws ec2 modify-subnet-attribute \
             --subnet-id $SUBNET_ID \
             --map-public-ip-on-launch
+
       - name: Create Route Table
         id: create-route-table
         run: |
@@ -130,6 +115,7 @@ jobs:
             --route-table-id $ROUTE_TABLE_ID \
             --subnet-id ${{ steps.create-subnet.outputs.subnet_id }}
           echo "Route table associated with subnet"
+
       - name: Create Security Group
         id: create-sg
         run: |
@@ -149,6 +135,7 @@ jobs:
             --port 22 \
             --cidr 0.0.0.0/0
           echo "SSH access rule added to security group"
+
       - name: Setup Packer
         uses: hashicorp/setup-packer@main
         with:
@@ -171,8 +158,9 @@ jobs:
             -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
             -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
             -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
-            -var "image_os=ubuntu22" \
+            -var "image_os=${{ inputs.image_os }}" \
             images/ubuntu/templates
+
       - name: Build AMI
         run: |
           packer build \
@@ -184,7 +172,7 @@ jobs:
             -var "vpc_id=${{ steps.create-vpc.outputs.vpc_id }}" \
             -var "subnet_id=${{ steps.create-subnet.outputs.subnet_id }}" \
             -var "security_group_id=${{ steps.create-sg.outputs.sg_id }}" \
-            -var "image_os=ubuntu22" \
+            -var "image_os=${{ inputs.image_os }}" \
             -var "image_version=${{ inputs.image_version }}" \
             images/ubuntu/templates
         env:
@@ -207,6 +195,7 @@ jobs:
           AMI_ID=$(grep -o 'ami-[a-z0-9]*' /tmp/packer-log.txt | tail -1)
           echo "ami_id=$AMI_ID" >> $GITHUB_OUTPUT
           echo "AMI ID: $AMI_ID"
+
       - name: Tag AMI
         if: steps.get-ami-id.outputs.ami_id != ''
         run: |
@@ -217,6 +206,7 @@ jobs:
                    Key=CreatedBy,Value="GitHub Actions" \
                    Key=Version,Value="${{ inputs.image_version }}" \
                    Key=BuildDate,Value="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
       - name: Cleanup Infrastructure
         if: always()
         run: |
@@ -268,6 +258,7 @@ jobs:
             echo "VPC deleted"
           fi
           echo "Infrastructure cleanup completed"
+
       - name: Output AMI Information
         run: |
           echo "## AMI Build Complete 🎉" >> $GITHUB_STEP_SUMMARY
@@ -278,16 +269,3 @@ jobs:
           echo "**Instance Type:** ${{ env.INSTANCE_TYPE }}" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ inputs.image_version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Infrastructure Used" >> $GITHUB_STEP_SUMMARY
-          echo "- **VPC:** ${{ steps.create-vpc.outputs.vpc_id }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Subnet:** ${{ steps.create-subnet.outputs.subnet_id }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Security Group:** ${{ steps.create-sg.outputs.sg_id }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Usage" >> $GITHUB_STEP_SUMMARY
-          echo "You can now launch an EC2 instance using this AMI:" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "aws ec2 run-instances \\" >> $GITHUB_STEP_SUMMARY
-          echo "  --image-id ${{ steps.get-ami-id.outputs.ami_id }} \\" >> $GITHUB_STEP_SUMMARY
-          echo "  --instance-type t3.micro \\" >> $GITHUB_STEP_SUMMARY
-          echo "  --region ${{ env.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
